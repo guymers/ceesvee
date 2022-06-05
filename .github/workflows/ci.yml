@@ -1,0 +1,39 @@
+name: CI
+on:
+  push:
+    branches:
+      main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    name: Test
+    strategy:
+      matrix:
+        scala: [ 2.13.8, 3.1.2 ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install JDK 8
+        uses: actions/setup-java@v3
+        with:
+          distribution: zulu
+          java-version: '8'
+          java-package: jdk
+
+      - name: Cache SBT
+        uses: coursier/cache-action@v6
+        with:
+          extraKey: v1
+
+      - name: Compile
+        run: sbt -mem 2048 ++${{ matrix.scala }} compile
+
+      - name: Lint
+        run: sbt -mem 2048 ++${{ matrix.scala }} scalafmtCheckAll
+
+      - name: Test
+        run: sbt -mem 2048 ++${{ matrix.scala }} test
