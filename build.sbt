@@ -10,7 +10,7 @@ val Scala3 = "3.1.2"
 inThisBuild(Seq(
   organization := "com.github.guymers",
   homepage := Some(url("https://github.com/guymers/ceesvee")),
-  licenses := List("MIT" -> url("http://opensource.org/licenses/MIT")),
+  licenses := List(License.MIT),
   developers := List(
     Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
   ),

@@ -14,6 +14,41 @@ object CsvParser {
   /**
    * Turns a stream of strings into a stream of decoded CSV records.
    *
+   * CSV lines are reordered based on the given headers.
+   */
+  @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
+  @throws[CsvHeader.MissingHeaders]("if the first line does not contain all the headers")
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
+  def decodeWithHeader[T](
+    in: Iterator[String],
+    header: CsvHeader[T],
+    options: Options,
+  ): Either[CsvHeader.MissingHeaders, Iterator[Either[CsvRecordDecoder.Error, T]]] = {
+    @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
+    var decoder: CsvHeader.Decoder[T] = null
+
+    try {
+      val iterator = parse[List](in, options).flatMap { fields =>
+        if (decoder == null) {
+          header.create(fields) match {
+            case Left(err: CsvHeader.MissingHeaders) => throw err
+            case Right(_decoder) =>
+              decoder = _decoder
+              Iterator.empty
+          }
+        } else {
+          Iterator(decoder.decode(fields))
+        }
+      }
+      Right(iterator)
+    } catch {
+      case e: CsvHeader.MissingHeaders => Left(e)
+    }
+  }
+
+  /**
+   * Turns a stream of strings into a stream of decoded CSV records.
+   *
    * The given strings must contain new lines as this method splits on them.
    *
    * Blank lines and lines starting with '#' are ignored.

@@ -18,12 +18,14 @@ case class Test(
 )
 object Test {
   implicit val decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derive
+  val header = ::("str", List("int", "bool", "opt_int"))
+  val csvHeader = CsvHeader.create(header)(decoder)
 }
 ```
 
 `Iterator`
 ```scala
 val input: Iterator[String]
-val result: Iterator[Either[CsvRecordDecoder.Error, Test]] = 
-  CsvParser.decode[Test](input, options)
+val result: Either[CsvHeader.MissingHeaders, Iterator[Either[CsvRecordDecoder.Error, Test]]] =
+  CsvParser.decodeWithHeader(input, Test.csvHeader, options)
 ```

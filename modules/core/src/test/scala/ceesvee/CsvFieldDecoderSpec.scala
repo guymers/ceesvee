@@ -176,7 +176,6 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
           }
         },
         test("invalid") {
-          println(ZonedDateTime.now().toString)
           val result = CsvFieldDecoder[ZonedDateTime].decode("2000-01-01T00:00:00+00:00[TimeZone]")
           assertTrue(result == Left(Error(
             "2000-01-01T00:00:00+00:00[TimeZone]",
