@@ -1,7 +1,8 @@
 // format: off
 
+val fs2Version = "3.2.7"
 val shapelessVersion = "2.3.9"
-val zioVersion = "1.0.14"
+val zioVersion = "1.0.15"
 
 // if changing these also change versions in .github/workflows/ci.yml
 val Scala213 = "2.13.8"
@@ -103,7 +104,7 @@ lazy val ceesvee = project.in(file("."))
   .settings(commonSettings)
   .settings(noPublishSettings)
   .aggregate(
-    core,
+    core, fs2, zio,
     benchmark,
   )
 
@@ -117,6 +118,23 @@ lazy val core = module("core")
     }),
   )
 
+lazy val fs2 = module("fs2")
+  .settings(
+    libraryDependencies ++= Seq(
+      "co.fs2" %% "fs2-core" % fs2Version,
+    ),
+  )
+  .dependsOn(core)
+
+lazy val zio = module("zio")
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % zioVersion,
+      "dev.zio" %% "zio-streams" % zioVersion,
+    ),
+  )
+  .dependsOn(core)
+
 lazy val benchmark = proj("benchmark", None)
   .settings(commonSettings)
   .settings(noPublishSettings)
@@ -128,3 +146,73 @@ lazy val benchmark = proj("benchmark", None)
   )
   .dependsOn(core)
   .enablePlugins(JmhPlugin)
+
+
+val TestCsvFiles = Map(
+  // https://www.stats.govt.nz/large-datasets/csv-files-for-download/
+  "nz-greenhouse-gas-emissions-2019.csv" -> (
+    "https://www.stats.govt.nz/assets/Uploads/Greenhouse-gas-emissions-industry-and-household/Greenhouse-gas-emissions-industry-and-household-Year-ended-2019/Download-data/Greenhouse-gas-emissions-industry-and-household-year-ended-2019-csv.csv",
+    "2561a652157c5eb8f23a7f84f3648440fe67ba8d",
+  ),
+
+  // https://data.gov.uk/dataset/48c917d5-11a0-429f-a0db-0c5ae6ffa1c8/places-to-visit-in-causeway-coast-and-glens
+  "uk-causeway-coast-and-glens.csv" -> (
+    "https://ccgbcodni-cbcni.opendata.arcgis.com/datasets/42b6ad70a304442dbdb963974d44b433_0.csv",
+    "ad3b923ddd17a8fb774dc60b8ed2f2a8281f2cda",
+  ),
+
+  // https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads
+  "uk-property-sales-price-paid-2019.csv" -> (
+    "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2019.csv",
+    "f1c80e09b31039b5f88a73aade36f5dfa5b2c878",
+  ),
+)
+
+def downloadTestCsvFile(log: Logger, file: File): Unit = {
+  import scala.sys.process._
+
+  val (_url, _hash) = TestCsvFiles(file.name)
+
+  val currentHash = FileInfo.hash(file)
+  val expected = FileInfo.hash(file, _hash.sliding(2, 2).map(Integer.parseInt(_, 16).toByte).toArray)
+
+  if (currentHash != expected) {
+    file.getParentFile.mkdirs()
+    file.createNewFile()
+
+    log.info(s"Downloading test CSV file: ${file.name}")
+
+    url(_url) #> file !
+
+    log.info(s"Downloaded test CSV file: ${file.name}")
+
+    val hash = FileInfo.hash(file)
+    if (hash != expected) {
+      throw new IllegalStateException(s"Test CSV file ${file.name} does not match expected hash")
+    }
+  }
+}
+
+// only want to download the files once no matter how many cross Scala versions there are
+def _testCsvFilesDir(base: File) = base / "target" / "scala" / "resource_managed" / "test"
+
+lazy val tests = proj("tests", None)
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(zioTestSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "co.fs2" %% "fs2-io" % fs2Version % Test,
+    ),
+    Test / resourceGenerators += Def.task {
+      val s = streams.value
+
+      val dir = _testCsvFilesDir((Test / baseDirectory).value)
+      val files = TestCsvFiles.keys.toSeq.map(dir / "csv" / _)
+      files.foreach(downloadTestCsvFile(s.log, _))
+      files
+    }.taskValue,
+    Test / managedResourceDirectories += _testCsvFilesDir((Test / baseDirectory).value),
+  )
+  .dependsOn(core, fs2, zio)
+

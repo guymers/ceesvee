@@ -29,3 +29,21 @@ val input: Iterator[String]
 val result: Either[CsvHeader.MissingHeaders, Iterator[Either[CsvRecordDecoder.Error, Test]]] =
   CsvParser.decodeWithHeader(input, Test.csvHeader, options)
 ```
+
+`fs2`
+```scala
+val stream: fs2.Stream[F[_], String]
+val result: fs2.Stream[F[_], Either[CsvRecordDecoder.Error, Test]] = stream.through {
+  Fs2CsvParser.decodeWithHeader(Test.csvHeader, options)
+}
+```
+
+`zio`
+```scala
+val stream: zio.stream.ZStream[R, E, String]
+val result: zio.ZManaged[
+  r,
+  Either[Either[E, CsvParser.Error], CsvHeader.MissingHeaders],
+  zio.stream.ZStream[E, Either[E, CsvParser.Error], Either[CsvRecordDecoder.Error, Test]]
+] = ZioCsvParser.decodeWithHeader(stream, Test.csvHeader, options)
+```
