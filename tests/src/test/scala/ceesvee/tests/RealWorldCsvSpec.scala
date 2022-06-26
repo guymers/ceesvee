@@ -3,13 +3,13 @@ package ceesvee.tests
 import cats.effect.IO
 import ceesvee.CsvHeader
 import ceesvee.CsvParser
-import ceesvee.CsvParser.Error
+import ceesvee.CsvReader
 import ceesvee.CsvRecordDecoder
-import ceesvee.Fs2CsvParser
-import ceesvee.ZioCsvParser
+import ceesvee.fs2.Fs2CsvReader
 import ceesvee.tests.model.NZGreenhouseGasEmissions
 import ceesvee.tests.model.UkCausewayCoast
 import ceesvee.tests.model.UkPropertySalesPricePaid
+import ceesvee.zio.ZioCsvReader
 import zio.ZIO
 import zio.duration.*
 import zio.stream.ZStream
@@ -26,7 +26,7 @@ import java.nio.file.Paths
 
 object RealWorldCsvSpec extends DefaultRunnableSpec {
 
-  private val options = CsvParser.Options(
+  private val options = CsvReader.Options(
     maximumLineLength = 1000,
   )
 
@@ -52,7 +52,7 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
       List(
         test("scala") {
           readFile(path) { input =>
-            val result = CsvParser.decodeWithHeader(input, UkCausewayCoast.csvHeader, options)
+            val result = CsvReader.decodeWithHeader(input, UkCausewayCoast.csvHeader, options)
             result match {
               case l @ Left(_) => assertTrue(l.isRight)
               case Right(result) => assertResult(result.toSeq)
@@ -61,7 +61,7 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
         },
         testM("fs2") {
           val io = readFileFs2(path).through {
-            Fs2CsvParser.decodeWithHeader(UkCausewayCoast.csvHeader, options)
+            Fs2CsvReader.decodeWithHeader(UkCausewayCoast.csvHeader, options)
           }.compile.toList
           catsIoToZio(io).map { result =>
             assertResult(result)
@@ -69,7 +69,7 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
         },
         testM("zio") {
           val stream = readFileZio(path)
-          ZioCsvParser.decodeWithHeader(stream, UkCausewayCoast.csvHeader, options).use { s =>
+          ZioCsvReader.decodeWithHeader(stream, UkCausewayCoast.csvHeader, options).use { s =>
             s.runCollect.mapError(Left(_))
           }.map { result =>
             assertResult(result)
@@ -93,21 +93,21 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
     List(
       test("scala") {
         val result = readFile(path) { input =>
-          CsvParser.decode(input, options)(decoder).count(_.isRight).toLong
+          CsvReader.decode(input, options)(decoder).count(_.isRight).toLong
         }
         assertTrue(result == total)
       },
       testM("fs2") {
         val io = readFileFs2(path).through {
-          Fs2CsvParser.decode[IO, T](options)(implicitly, decoder)
+          Fs2CsvReader.decode[IO, T](options)(implicitly, decoder)
         }.collect { case Right(v) => v }.compile.count
         catsIoToZio(io).map { count =>
           assertTrue(count == total)
         }
       },
       testM("zio") {
-        val transducer = ZioCsvParser.decode(options)(decoder).mapError {
-          case e: Error.LineTooLong => e
+        val transducer = ZioCsvReader.decode(options)(decoder).mapError {
+          case e: CsvParser.Error.LineTooLong => e
         }.mapM(ZIO.fromEither(_))
         readFileZio(path).transduce(transducer).runCount.map { count =>
           assertTrue(count == total)
@@ -122,14 +122,14 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
     List(
       test("scala") {
         val result = readFile(path) { input =>
-          CsvParser.decodeWithHeader(input, header, options)
+          CsvReader.decodeWithHeader(input, header, options)
             .map(_.count(_.isRight).toLong)
         }
         assertTrue(result == Right(total))
       },
       testM("fs2") {
         val io = readFileFs2(path).through {
-          Fs2CsvParser.decodeWithHeader(header, options)
+          Fs2CsvReader.decodeWithHeader(header, options)
         }.collect { case Right(v) => v }.compile.count
         catsIoToZio(io).map { count =>
           assertTrue(count == total)
@@ -137,7 +137,7 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
       },
       testM("zio") {
         val stream = readFileZio(path)
-        ZioCsvParser.decodeWithHeader(stream, header, options).use { s =>
+        ZioCsvReader.decodeWithHeader(stream, header, options).use { s =>
           s.collectRight.runCount.mapError(Left(_))
         }.map { count =>
           assertTrue(count == total)

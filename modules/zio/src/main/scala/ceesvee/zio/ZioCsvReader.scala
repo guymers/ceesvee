@@ -1,15 +1,19 @@
-package ceesvee
+package ceesvee.zio
 
-import zio.Chunk
-import zio.NonEmptyChunk
-import zio.Ref
-import zio.ZIO
-import zio.ZManaged
-import zio.stream.ZSink
-import zio.stream.ZStream
-import zio.stream.ZTransducer
+import _root_.zio.Chunk
+import _root_.zio.NonEmptyChunk
+import _root_.zio.Ref
+import _root_.zio.ZIO
+import _root_.zio.ZManaged
+import _root_.zio.stream.ZSink
+import _root_.zio.stream.ZStream
+import _root_.zio.stream.ZTransducer
+import ceesvee.CsvHeader
+import ceesvee.CsvParser
+import ceesvee.CsvReader
+import ceesvee.CsvRecordDecoder
 
-object ZioCsvParser {
+object ZioCsvReader {
   import CsvParser.Error
   import CsvParser.State
   import CsvParser.ignoreLine
@@ -24,7 +28,7 @@ object ZioCsvParser {
   def decodeWithHeader[R, E, T](
     stream: ZStream[R, E, String],
     header: CsvHeader[T],
-    options: CsvParser.Options,
+    options: CsvReader.Options,
   ): ZManaged[R, Either[Either[E, Error], CsvHeader.MissingHeaders], ZStream[R, Either[E, Error], Either[CsvRecordDecoder.Error, T]]] = {
     for {
       tuple <- stream.mapError(Left(_)).peel {
@@ -32,7 +36,7 @@ object ZioCsvParser {
       }.mapError(Left(_))
       ((headerFields, state, records), s) = tuple
       decoder <- ZIO.fromEither(header.create(headerFields)).mapError(Right(_)).toManaged_
-      transducer = _parse(state, options)
+      transducer = ZioCsvParser._parse(state, options)
     } yield {
       (
         ZStream.fromChunk(records) ++
@@ -45,54 +49,9 @@ object ZioCsvParser {
    * Turns a stream of strings into a stream of decoded CSV records.
    */
   def decode[T](
-    options: CsvParser.Options,
+    options: CsvReader.Options,
   )(implicit D: CsvRecordDecoder[T]): ZTransducer[Any, Error, String, Either[CsvRecordDecoder.Error, T]] = {
-    parse(options).map(D.decode(_))
-  }
-
-  /**
-   * Turns a stream of strings into a stream of CSV records.
-   */
-  def parse(
-    options: CsvParser.Options,
-  ): ZTransducer[Any, Error, String, Chunk[String]] = {
-    _parse(State.initial, options)
-  }
-
-  private def _parse(state: State, options: CsvParser.Options) = {
-    _splitLines(state, options)
-      .filterInput[String](str => !ignoreLine(str))
-      .map(parseLine[Chunk](_))
-  }
-
-  /**
-   * Split strings into CSV lines using both '\n' and '\r\n' as delimiters.
-   *
-   * Delimiters within double-quotes are ignored.
-   */
-  def splitLines(
-    options: CsvParser.Options,
-  ): ZTransducer[Any, Error, String, String] = {
-    _splitLines(State.initial, options)
-  }
-
-  private def _splitLines(
-    state: State,
-    options: CsvParser.Options,
-  ): ZTransducer[Any, Error, String, String] = ZTransducer {
-    Ref.makeManaged(state).map { stateRef =>
-      {
-        case None =>
-          stateRef.getAndSet(State.initial).map { case State(leftover, _) =>
-            if (leftover.isEmpty) Chunk.empty else Chunk(leftover)
-          }
-
-        case Some(strings) =>
-          stateRef.get.flatMap { case State(leftover, _) =>
-            ZIO.fail(Error.LineTooLong(options.maximumLineLength)).when(leftover.length > options.maximumLineLength)
-          } *> stateRef.modify(splitStrings(strings, _).swap)
-      }
-    }
+    ZioCsvParser.parse(options).map(D.decode(_))
   }
 
   private def extractFirstLine(

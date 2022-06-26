@@ -21,12 +21,12 @@ trait CsvRecordDecoderDeriveScalaVersion {
     )
   }
 
-  given [P <: Product, A](using
-    m: Mirror.ProductOf[P],
-    ev: A =:= m.MirroredElemTypes,
-    decoder: => CsvRecordDecoderDerive[A],
-  ): CsvRecordDecoderDerive[P] = {
-    new CsvRecordDecoderDerive[P](
+  given [A <: Product, T](using
+    m: Mirror.ProductOf[A],
+    ev: T =:= m.MirroredElemTypes,
+    decoder: => CsvRecordDecoderDerive[T],
+  ): CsvRecordDecoderDerive[A] = {
+    new CsvRecordDecoderDerive[A](
       decoder.decoders,
       values => m.fromProduct(ev(decoder.lift(values))),
     )

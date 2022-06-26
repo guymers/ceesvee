@@ -13,14 +13,13 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
 
-object CsvFieldDecoderSpec extends DefaultRunnableSpec {
+object CsvFieldSpec extends DefaultRunnableSpec {
   import CsvFieldDecoder.Error
 
-  override val spec = suite("CsvFieldDecoder")(
+  override val spec = suite("CsvField")(
     testM("string") {
       check(Gen.anyString) { s =>
-        val result = CsvFieldDecoder[String].decode(s)
-        assertTrue(result == Right(s))
+        assertGolden(s)
       }
     },
     suite("boolean")({
@@ -32,9 +31,18 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       )
 
       List(
-        test("valid") {
+        test("encode") {
+          assertTrue(CsvFieldEncoder[Boolean].encode(false) == "false") &&
+          assertTrue(CsvFieldEncoder[Boolean].encode(true) == "true")
+        },
+        test("decode") {
           valid.foldLeft(assertCompletes) { case (a, (str, bool)) =>
             a && assertTrue(CsvFieldDecoder[Boolean].decode(str) == Right(bool))
+          }
+        },
+        testM("valid") {
+          check(Gen.boolean) { b =>
+            assertGolden(b)
           }
         },
         testM("invalid") {
@@ -49,8 +57,7 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       suite("int")(
         testM("valid") {
           check(Gen.anyInt) { i =>
-            val result = CsvFieldDecoder[Int].decode(i.toString)
-            assertTrue(result == Right(i))
+            assertGolden(i)
           }
         },
         test("invalid") {
@@ -61,8 +68,7 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       suite("long")(
         testM("valid") {
           check(Gen.anyLong) { l =>
-            val result = CsvFieldDecoder[Long].decode(l.toString)
-            assertTrue(result == Right(l))
+            assertGolden(l)
           }
         },
         test("invalid") {
@@ -73,8 +79,7 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       suite("float")(
         testM("valid") {
           check(Gen.anyFloat) { f =>
-            val result = CsvFieldDecoder[Float].decode(f.toString)
-            assertTrue(result == Right(f))
+            assertGolden(f)
           }
         },
         test("invalid") {
@@ -84,9 +89,19 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       ),
       suite("double")(
         testM("valid") {
-          check(Gen.anyDouble) { f =>
-            val result = CsvFieldDecoder[Double].decode(f.toString)
-            assertTrue(result == Right(f))
+          check(Gen.anyDouble) { d =>
+            assertGolden(d)
+          }
+        },
+        test("invalid") {
+          val result = CsvFieldDecoder[Double].decode("_123.45")
+          assertTrue(result == Left(Error("_123.45", "invalid double value")))
+        },
+      ),
+      suite("big decimal")(
+        testM("valid") {
+          check(Gen.bigDecimal(Double.MinValue, Double.MaxValue)) { d =>
+            assertGolden(d)
           }
         },
         test("invalid") {
@@ -98,9 +113,8 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
     suite("times")(
       suite("date")(
         testM("valid") {
-          check(Gen.anyLocalDate) { f =>
-            val result = CsvFieldDecoder[LocalDate].decode(f.toString)
-            assertTrue(result == Right(f))
+          check(Gen.anyLocalDate) { date =>
+            assertGolden(date)
           }
         },
         test("invalid") {
@@ -113,9 +127,8 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       ),
       suite("date time")(
         testM("valid") {
-          check(Gen.anyLocalDateTime) { f =>
-            val result = CsvFieldDecoder[LocalDateTime].decode(f.toString)
-            assertTrue(result == Right(f))
+          check(Gen.anyLocalDateTime) { dateTime =>
+            assertGolden(dateTime)
           }
         },
         test("invalid") {
@@ -128,9 +141,8 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       ),
       suite("time")(
         testM("valid") {
-          check(Gen.anyLocalTime) { f =>
-            val result = CsvFieldDecoder[LocalTime].decode(f.toString)
-            assertTrue(result == Right(f))
+          check(Gen.anyLocalTime) { time =>
+            assertGolden(time)
           }
         },
         test("invalid") {
@@ -143,9 +155,8 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       ),
       suite("instant")(
         testM("valid") {
-          check(Gen.anyInstant) { f =>
-            val result = CsvFieldDecoder[Instant].decode(f.toString)
-            assertTrue(result == Right(f))
+          check(Gen.anyInstant) { instant =>
+            assertGolden(instant)
           }
         },
         test("invalid") {
@@ -158,9 +169,8 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       ),
       suite("offset date time")(
         testM("valid") {
-          check(Gen.anyOffsetDateTime) { f =>
-            val result = CsvFieldDecoder[OffsetDateTime].decode(f.toString)
-            assertTrue(result == Right(f))
+          check(Gen.anyOffsetDateTime) { dateTime =>
+            assertGolden(dateTime)
           }
         },
         test("invalid") {
@@ -170,9 +180,8 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       ),
       suite("zoned date time")(
         testM("valid") {
-          check(Gen.anyZonedDateTime) { f =>
-            val result = CsvFieldDecoder[ZonedDateTime].decode(f.toString)
-            assertTrue(result == Right(f))
+          check(Gen.anyZonedDateTime) { dateTime =>
+            assertGolden(dateTime)
           }
         },
         test("invalid") {
@@ -185,9 +194,8 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       ),
       suite("zone")(
         testM("valid") {
-          check(Gen.anyZoneId) { f =>
-            val result = CsvFieldDecoder[ZoneId].decode(f.toString)
-            assertTrue(result == Right(f))
+          check(Gen.anyZoneId) { id =>
+            assertGolden(id)
           }
         },
         test("invalid") {
@@ -198,9 +206,8 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
     ),
     suite("uuid")(
       testM("valid") {
-        check(Gen.anyUUID) { f =>
-          val result = CsvFieldDecoder[UUID].decode(f.toString)
-          assertTrue(result == Right(f))
+        check(Gen.anyUUID) { uuid =>
+          assertGolden(uuid)
         }
       },
       test("invalid") {
@@ -216,7 +223,7 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
           new URI("https://example.com/path?query=q"),
         )
         valid.foldLeft(assertCompletes) { case (a, uri) =>
-          a && assertTrue(CsvFieldDecoder[URI].decode(uri.toString) == Right(uri))
+          a && assertGolden(uri)
         }
       },
       test("invalid") {
@@ -228,6 +235,12 @@ object CsvFieldDecoderSpec extends DefaultRunnableSpec {
       },
     ),
   )
+
+  private def assertGolden[T: CsvFieldDecoder: CsvFieldEncoder](t: T) = {
+    val encoded = CsvFieldEncoder[T].encode(t)
+    val decoded = CsvFieldDecoder[T].decode(encoded)
+    assertTrue(decoded == Right(t))
+  }
 
   override val aspects = List(
     TestAspect.timeout(15.seconds),

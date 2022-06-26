@@ -6,7 +6,7 @@ val zioVersion = "1.0.15"
 
 // if changing these also change versions in .github/workflows/ci.yml
 val Scala213 = "2.13.8"
-val Scala3 = "3.1.2"
+val Scala3 = "3.1.3"
 
 inThisBuild(Seq(
   organization := "com.github.guymers",

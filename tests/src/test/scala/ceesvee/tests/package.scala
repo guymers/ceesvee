@@ -1,7 +1,7 @@
 package ceesvee
 
+import _root_.zio.ZIO
 import cats.effect.IO
-import zio.ZIO
 
 package object tests {
 

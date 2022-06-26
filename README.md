@@ -1,11 +1,11 @@
 ### ceeSvee
 
-A CSV parser designed for use with steams. Can be used with `Iterator`, `fs2.Stream` and `zio.stream.ZStream`.
+A CSV library designed for use with steams. Can be used with `Iterator`, `fs2.Stream` and `zio.stream.ZStream`.
 
 Supports the CSV format described by [Model for Tabular Data and Metadata on the Web](https://www.w3.org/TR/2015/REC-tabular-data-model-20151217/#ebnf):
 - a new line can be `\n` or `\r\n`
 - a double quote is escaped by a double quote 
-- leading and trailing whitespace in a field is ignored
+- leading and trailing whitespace in a field is ignored unless it is quoted
 
 #### Example
 
