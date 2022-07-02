@@ -14,7 +14,7 @@ object CsvTestHelper {
 
     private val limitedAnyString = for {
       max <- Gen.int(0, 64)
-      str <- Gen.stringBounded(0, max)(Gen.anyUnicodeChar)
+      str <- Gen.stringBounded(0, max)(Gen.unicodeChar)
     } yield str
 
     private val whitespace = Gen.stringBounded(1, 5)(oneOfChar(NonEmptyChunk(' ', '\t')))
@@ -22,7 +22,7 @@ object CsvTestHelper {
     def withLeadingOrTrailingWhitespace(str: String) = Gen.oneOf(
       whitespace.map(_ concat str),
       whitespace.map(str concat _),
-      Gen.crossN(whitespace, whitespace) { case (prefix, suffix) => s"$prefix$str$suffix" },
+      (whitespace <*> whitespace).map { case (prefix, suffix) => s"$prefix$str$suffix" },
     )
 
     def injectInMiddle[R](str: String)(gen: Gen[R, Char]) = {

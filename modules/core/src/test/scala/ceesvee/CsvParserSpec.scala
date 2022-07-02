@@ -1,9 +1,10 @@
 package ceesvee
 
-import zio.duration.*
+import zio.Chunk
+import zio.durationInt
 import zio.test.*
 
-object CsvParserSpec extends DefaultRunnableSpec {
+object CsvParserSpec extends ZIOSpecDefault {
 
   override val spec = suite("CsvParser")(
     suite("parse")(
@@ -56,7 +57,7 @@ object CsvParserSpec extends DefaultRunnableSpec {
     ),
   )
 
-  override val aspects = List(
+  override val aspects = Chunk(
     TestAspect.timeout(15.seconds),
   )
 }

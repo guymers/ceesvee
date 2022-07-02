@@ -10,10 +10,11 @@ import ceesvee.tests.model.NZGreenhouseGasEmissions
 import ceesvee.tests.model.UkCausewayCoast
 import ceesvee.tests.model.UkPropertySalesPricePaid
 import ceesvee.zio.ZioCsvReader
+import zio.Chunk
 import zio.ZIO
-import zio.duration.*
+import zio.durationInt
+import zio.stream.ZPipeline
 import zio.stream.ZStream
-import zio.stream.ZTransducer
 import zio.test.*
 
 import java.io.InputStream
@@ -24,7 +25,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-object RealWorldCsvSpec extends DefaultRunnableSpec {
+object RealWorldCsvSpec extends ZIOSpecDefault {
 
   private val options = CsvReader.Options(
     maximumLineLength = 1000,
@@ -59,7 +60,7 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
             }
           }
         },
-        testM("fs2") {
+        test("fs2") {
           val io = readFileFs2(path).through {
             Fs2CsvReader.decodeWithHeader(UkCausewayCoast.csvHeader, options)
           }.compile.toList
@@ -67,10 +68,12 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
             assertResult(result)
           }
         },
-        testM("zio") {
+        test("zio") {
           val stream = readFileZio(path)
-          ZioCsvReader.decodeWithHeader(stream, UkCausewayCoast.csvHeader, options).use { s =>
-            s.runCollect.mapError(Left(_))
+          ZIO.scoped {
+            ZioCsvReader.decodeWithHeader(stream, UkCausewayCoast.csvHeader, options).flatMap { s =>
+              s.runCollect.mapError(Left(_))
+            }
           }.map { result =>
             assertResult(result)
           }
@@ -97,7 +100,7 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
         }
         assertTrue(result == total)
       },
-      testM("fs2") {
+      test("fs2") {
         val io = readFileFs2(path).through {
           Fs2CsvReader.decode[IO, T](options)(implicitly, decoder)
         }.collect { case Right(v) => v }.compile.count
@@ -105,11 +108,11 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
           assertTrue(count == total)
         }
       },
-      testM("zio") {
-        val transducer = ZioCsvReader.decode(options)(decoder).mapError {
+      test("zio") {
+        val pipeline = ZioCsvReader.decode(options)(decoder, implicitly).mapError {
           case e: CsvParser.Error.LineTooLong => e
-        }.mapM(ZIO.fromEither(_))
-        readFileZio(path).transduce(transducer).runCount.map { count =>
+        }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
+        readFileZio(path).via(pipeline).runCount.map { count =>
           assertTrue(count == total)
         }
       },
@@ -127,7 +130,7 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
         }
         assertTrue(result == Right(total))
       },
-      testM("fs2") {
+      test("fs2") {
         val io = readFileFs2(path).through {
           Fs2CsvReader.decodeWithHeader(header, options)
         }.collect { case Right(v) => v }.compile.count
@@ -135,10 +138,12 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
           assertTrue(count == total)
         }
       },
-      testM("zio") {
+      test("zio") {
         val stream = readFileZio(path)
-        ZioCsvReader.decodeWithHeader(stream, header, options).use { s =>
-          s.collectRight.runCount.mapError(Left(_))
+        ZIO.scoped {
+          ZioCsvReader.decodeWithHeader(stream, header, options).flatMap { s =>
+            s.collectRight.runCount.mapError(Left(_))
+          }
         }.map { count =>
           assertTrue(count == total)
         }
@@ -190,10 +195,10 @@ object RealWorldCsvSpec extends DefaultRunnableSpec {
   }
 
   private def readFileZio(path: Path) = {
-    ZStream.fromFile(path, chunkSize = 16384).transduce(ZTransducer.utfDecode)
+    ZStream.fromPath(path, chunkSize = 16384) >>> ZPipeline.utfDecode
   }
 
-  override val aspects = List(
+  override val aspects = Chunk(
     TestAspect.timeout(60.seconds),
   )
 }

@@ -1,8 +1,8 @@
 // format: off
 
-val fs2Version = "3.2.7"
+val fs2Version = "3.2.9"
 val shapelessVersion = "2.3.9"
-val zioVersion = "1.0.15"
+val zioVersion = "2.0.0"
 
 // if changing these also change versions in .github/workflows/ci.yml
 val Scala213 = "2.13.8"
@@ -68,6 +68,7 @@ lazy val commonSettings = Seq(
     Wart.Any,
     Wart.Equals,
     Wart.FinalCaseClass,
+    Wart.ImplicitParameter,
     Wart.Nothing
   ),
   Test / compile / wartremoverErrors := Seq(
