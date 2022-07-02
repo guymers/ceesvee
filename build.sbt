@@ -9,13 +9,16 @@ val Scala213 = "2.13.8"
 val Scala3 = "3.1.3"
 
 inThisBuild(Seq(
-  organization := "com.github.guymers",
+  organization := "io.github.guymers",
   homepage := Some(url("https://github.com/guymers/ceesvee")),
   licenses := List(License.MIT),
   developers := List(
     Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
   ),
   scmInfo := Some(ScmInfo(url("https://github.com/sbt/ceesvee"), "git@github.com:guymers/ceesvee.git")),
+
+  sonatypeCredentialHost := "s01.oss.sonatype.org",
+  sonatypeRepository := "https://s01.oss.sonatype.org/service/local",
 ))
 
 lazy val commonSettings = Seq(
