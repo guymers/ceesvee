@@ -4,7 +4,6 @@ val fs2Version = "3.2.7"
 val shapelessVersion = "2.3.9"
 val zioVersion = "1.0.15"
 
-// if changing these also change versions in .github/workflows/ci.yml
 val Scala213 = "2.13.8"
 val Scala3 = "3.1.3"
 
@@ -15,7 +14,7 @@ inThisBuild(Seq(
   developers := List(
     Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
   ),
-  scmInfo := Some(ScmInfo(url("https://github.com/sbt/ceesvee"), "git@github.com:guymers/ceesvee.git")),
+  scmInfo := Some(ScmInfo(url("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git")),
 
   sonatypeCredentialHost := "s01.oss.sonatype.org",
   sonatypeRepository := "https://s01.oss.sonatype.org/service/local",
@@ -102,6 +101,9 @@ def proj(name: String, dir: Option[String]) =
 
 def module(name: String) = proj(name, Some("modules"))
   .settings(zioTestSettings)
+  .settings(
+    mimaPreviousArtifacts := previousStableVersion.value.map(organization.value %% moduleName.value % _).toSet,
+  )
 
 lazy val ceesvee = project.in(file("."))
   .settings(commonSettings)
@@ -110,6 +112,7 @@ lazy val ceesvee = project.in(file("."))
     core, fs2, zio,
     benchmark,
   )
+  .disablePlugins(MimaPlugin)
 
 lazy val core = module("core")
   .settings(
@@ -149,6 +152,7 @@ lazy val benchmark = proj("benchmark", None)
   )
   .dependsOn(core)
   .enablePlugins(JmhPlugin)
+  .disablePlugins(MimaPlugin)
 
 
 val TestCsvFiles = Map(
@@ -218,4 +222,5 @@ lazy val tests = proj("tests", None)
     Test / managedResourceDirectories += _testCsvFilesDir((Test / baseDirectory).value),
   )
   .dependsOn(core, fs2, zio)
+  .disablePlugins(MimaPlugin)
 
