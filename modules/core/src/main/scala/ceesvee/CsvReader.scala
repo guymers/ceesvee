@@ -29,11 +29,12 @@ object CsvReader {
     header: CsvHeader[T],
     options: Options,
   ): Either[CsvHeader.MissingHeaders, Iterator[Either[CsvRecordDecoder.Error, T]]] = {
-    @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
-    var decoder: CsvHeader.Decoder[T] = null
 
-    try {
-      val iterator = parse[List](in, options).flatMap { fields =>
+    @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
+    object decode extends (List[String] => Iterator[Either[CsvRecordDecoder.Error, T]]) {
+      private var decoder: CsvHeader.Decoder[T] = _
+
+      override def apply(fields: List[String]) = {
         if (decoder == null) {
           header.create(fields) match {
             case Left(err: CsvHeader.MissingHeaders) => throw err
@@ -45,6 +46,10 @@ object CsvReader {
           Iterator(decoder.decode(fields))
         }
       }
+    }
+
+    try {
+      val iterator = parse[List](in, options).flatMap(decode)
       Right(iterator)
     } catch {
       case e: CsvHeader.MissingHeaders => Left(e)

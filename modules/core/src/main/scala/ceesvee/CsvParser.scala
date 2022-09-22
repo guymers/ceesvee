@@ -116,51 +116,56 @@ object CsvParser {
     var insideQuote = state.insideQuote
     var leftover = state.leftover
 
-    strings.iterator.filter(_.nonEmpty).foreach { string =>
-      val concat = leftover concat string
+    val it = strings.iterator
+    while (it.hasNext) {
+      val string = it.next()
+      if (string.nonEmpty) {
 
-      // assume we have already processed `leftover`,
-      // reprocess the last character in case it was a '\', '"' or '\r'
-      var i = (leftover.length - 1).max(0)
-      var sliceStart = 0
+        val concat = leftover concat string
 
-      while (i < concat.length) {
-        (concat(i): @switch) match {
+        // assume we have already processed `leftover`,
+        // reprocess the last character in case it was a '\', '"' or '\r'
+        var i = (leftover.length - 1).max(0)
+        var sliceStart = 0
 
-          case '"' =>
-            if (insideQuote && (i + 1) < concat.length && concat(i + 1) == '"') { // ""
-              i += 2
-            } else {
-              i += 1
-              if (i < concat.length) {
-                insideQuote = !insideQuote
+        while (i < concat.length) {
+          (concat(i): @switch) match {
+
+            case '"' =>
+              if (insideQuote && (i + 1) < concat.length && concat(i + 1) == '"') { // ""
+                i += 2
+              } else {
+                i += 1
+                if (i < concat.length) {
+                  insideQuote = !insideQuote
+                }
               }
-            }
 
-          case '\n' =>
-            if (!insideQuote) {
-              val _ = builder += concat.substring(sliceStart, i)
-              i += 1
-              sliceStart = i
-            } else {
-              i += 1
-            }
+            case '\n' =>
+              if (!insideQuote) {
+                val _ = builder += concat.substring(sliceStart, i)
+                i += 1
+                sliceStart = i
+              } else {
+                i += 1
+              }
 
-          case '\r' =>
-            if (!insideQuote && (i + 1) < concat.length && concat(i + 1) == '\n') {
-              val _ = builder += concat.substring(sliceStart, i)
-              i += 2
-              sliceStart = i
-            } else {
-              i += 1
-            }
+            case '\r' =>
+              if (!insideQuote && (i + 1) < concat.length && concat(i + 1) == '\n') {
+                val _ = builder += concat.substring(sliceStart, i)
+                i += 2
+                sliceStart = i
+              } else {
+                i += 1
+              }
 
-          case _ =>
-            i += 1
+            case _ =>
+              i += 1
+          }
         }
-      }
 
-      leftover = concat.substring(sliceStart, concat.length)
+        leftover = concat.substring(sliceStart, concat.length)
+      }
     }
 
     (State(leftover, insideQuote = insideQuote), builder.result())
@@ -178,50 +183,57 @@ object CsvParser {
     line: String,
   )(implicit f: Factory[String, C[String]]): C[String] = {
     val fields = f.newBuilder
-    var insideQuote = false
 
-    val slices = mutable.ListBuffer.empty[(Int, Int)]
-    var sliceStart = 0
+    object ParseLine {
 
-    var i = 0
+      private val slices = mutable.ListBuffer.empty[(Int, Int)]
+      private var sliceStart = 0
 
-    def processSlices(): Unit = {
-      val str = (slices += (sliceStart -> i)).foldLeft("") { case (str, (start, end)) =>
-        str concat line.substring(start, end)
-      }
-      val _ = fields += str.trim.stripPrefix("\"").stripSuffix("\"")
-      slices.clear()
-    }
+      private var i = 0
+      private var insideQuote = false
 
-    while (i < line.length) {
-      (line(i): @switch) match {
+      def run(): Unit = {
+        while (i < line.length) {
+          (line(i): @switch) match {
 
-        case ',' =>
-          if (!insideQuote) {
-            processSlices()
-            i += 1
-            sliceStart = i
-          } else {
-            i += 1
+            case ',' =>
+              if (!insideQuote) {
+                process()
+                i += 1
+                sliceStart = i
+              } else {
+                i += 1
+              }
+
+            case '"' =>
+              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // ""
+                val _ = slices += (sliceStart -> i)
+                sliceStart = i + 1
+                i += 2
+              } else {
+                i += 1
+                insideQuote = !insideQuote
+              }
+
+            case _ =>
+              i += 1
           }
+        }
 
-        case '"' =>
-          if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // ""
-            val _ = slices += (sliceStart -> i)
-            sliceStart = i + 1
-            i += 2
-          } else {
-            i += 1
-            insideQuote = !insideQuote
-          }
+        process()
+      }
 
-        case _ =>
-          i += 1
+      private def process(): Unit = {
+        val str = (slices += (sliceStart -> i)).foldLeft("") { case (str, (start, end)) =>
+          str concat line.substring(start, end)
+        }
+        val _ = fields += str.trim.stripPrefix("\"").stripSuffix("\"")
+        slices.clear()
       }
     }
-
-    processSlices()
+    ParseLine.run()
 
     fields.result()
   }
+
 }

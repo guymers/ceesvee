@@ -53,6 +53,7 @@ lazy val commonSettings = Seq(
       "-Wnumeric-widen",
       "-Woctal-literal",
       "-Wunused:_",
+      "-Wperformance",
       "-Wvalue-discard",
 
       "-Xlint:_,-byname-implicit", // exclude byname-implicit https://github.com/scala/bug/issues/12072
