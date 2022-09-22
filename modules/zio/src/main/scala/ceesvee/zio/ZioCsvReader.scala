@@ -61,7 +61,7 @@ object ZioCsvReader {
 
     val initial: Chunk[Chunk[String]] = Chunk.empty
 
-    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.IterableOps"))
     def done(state: State, records: Chunk[Chunk[String]]) = {
       NonEmptyChunk.fromChunk(records).map { rs =>
         Push.emit((rs.head, state, rs.tail), Chunk.empty)

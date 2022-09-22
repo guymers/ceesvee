@@ -2,6 +2,7 @@ package ceesvee
 
 import scala.deriving.Mirror
 
+@SuppressWarnings(Array("org.wartremover.warts.ImplicitParameter"))
 trait CsvRecordDecoderDeriveScalaVersion {
 
   given CsvRecordDecoderDerive[EmptyTuple] = {

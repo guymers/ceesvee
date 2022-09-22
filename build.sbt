@@ -1,11 +1,11 @@
 // format: off
 
-val fs2Version = "3.2.7"
-val shapelessVersion = "2.3.9"
-val zioVersion = "1.0.15"
+val fs2Version = "3.2.14"
+val shapelessVersion = "2.3.10"
+val zioVersion = "1.0.17"
 
-val Scala213 = "2.13.8"
-val Scala3 = "3.1.3"
+val Scala213 = "2.13.9"
+val Scala3 = "3.2.0"
 
 inThisBuild(Seq(
   organization := "io.github.guymers",
@@ -49,6 +49,7 @@ lazy val commonSettings = Seq(
       "-Vtype-diffs",
       "-Wdead-code",
       "-Wextra-implicit",
+      "-Wnonunit-statement",
       "-Wnumeric-widen",
       "-Woctal-literal",
       "-Wunused:_",

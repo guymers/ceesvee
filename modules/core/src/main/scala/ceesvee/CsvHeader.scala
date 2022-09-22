@@ -31,7 +31,7 @@ object CsvHeader {
    * provided.
    */
   def create[T](headers: ::[String])(implicit D: CsvRecordDecoder[T]): CsvHeader[T] = {
-    require(headers.length == D.decoders.length) // TODO compile time error / better construction
+    require(headers.sizeIs == D.decoders.length) // TODO compile time error / better construction
 
     new CsvHeader[T](headers, D)
   }

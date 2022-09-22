@@ -19,6 +19,7 @@ object CsvRecordEncoder {
     }
   }
 
+  @SuppressWarnings(Array("org.wartremover.warts.ImplicitParameter"))
   implicit def field[T](implicit E: => CsvFieldEncoder[T]): CsvRecordEncoder[T] = {
     new CsvRecordEncoder[T] {
       @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))

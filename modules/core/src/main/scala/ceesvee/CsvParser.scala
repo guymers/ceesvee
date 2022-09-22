@@ -103,7 +103,11 @@ object CsvParser {
   }
 
   // FIXME allow configuration of escape char?
-  @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.While"))
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.MutableDataStructures",
+    "org.wartremover.warts.Var",
+    "org.wartremover.warts.While",
+  ))
   def splitStrings[C[S] <: Iterable[S]](
     strings: C[String],
     state: State,
@@ -165,14 +169,17 @@ object CsvParser {
   /**
    * Parse a line into a collection of CSV fields.
    */
-  @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.While"))
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.MutableDataStructures",
+    "org.wartremover.warts.Var",
+    "org.wartremover.warts.While",
+  ))
   def parseLine[C[_]](
     line: String,
   )(implicit f: Factory[String, C[String]]): C[String] = {
     val fields = f.newBuilder
     var insideQuote = false
 
-    @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))
     val slices = mutable.ListBuffer.empty[(Int, Int)]
     var sliceStart = 0
 

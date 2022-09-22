@@ -43,12 +43,16 @@ object CsvRecordDecoder {
     new CsvRecordDecoder[T](D.decoders, D.lift) {}
   }
 
-  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf", "org.wartremover.warts.TraversableOps"))
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.AsInstanceOf",
+    "org.wartremover.warts.ImplicitParameter",
+    "org.wartremover.warts.IterableOps",
+  ))
   implicit def field[T](implicit D: => CsvFieldDecoder[T]): CsvRecordDecoder[T] = {
     new CsvRecordDecoder[T](List(D), _.head.asInstanceOf[T]) {}
   }
 
-  @SuppressWarnings(Array("org.wartremover.warts.Null"))
+  @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures", "org.wartremover.warts.Null"))
   private[ceesvee] def decode[A](
     decoders: List[Option[(CsvFieldDecoder[?], Int)]],
     lift: Iterable[Any] => A,
@@ -59,7 +63,6 @@ object CsvRecordDecoder {
 
     (fields: Iterable[String]) => {
 
-      @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))
       val _errs = SortedMap.newBuilder[Int, Error.Field]
       val values = Array.ofDim[Any](size)
 
