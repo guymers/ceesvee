@@ -1,11 +1,10 @@
 package ceesvee
 
-import zio.duration.*
 import zio.test.*
 
 import scala.collection.immutable.SortedMap
 
-object CsvRecordSpec extends DefaultRunnableSpec {
+object CsvRecordSpec extends ZIOSpecDefault {
 
   override val spec = suite("CsvRecord")(
     test("valid") {
@@ -33,9 +32,5 @@ object CsvRecordSpec extends DefaultRunnableSpec {
         ),
       )))
     },
-  )
-
-  override val aspects = List(
-    TestAspect.timeout(15.seconds),
   )
 }

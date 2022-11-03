@@ -1,9 +1,8 @@
 package ceesvee
 
-import zio.duration.*
 import zio.test.*
 
-object CsvWriterSpec extends DefaultRunnableSpec {
+object CsvWriterSpec extends ZIOSpecDefault {
   import CsvWriter.quoteField
 
   override val spec = suite("CsvWriter")(
@@ -34,9 +33,5 @@ object CsvWriterSpec extends DefaultRunnableSpec {
         },
       ),
     ),
-  )
-
-  override val aspects = List(
-    TestAspect.timeout(15.seconds),
   )
 }

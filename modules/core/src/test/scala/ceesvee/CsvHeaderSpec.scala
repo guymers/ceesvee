@@ -1,11 +1,10 @@
 package ceesvee
 
-import zio.duration.*
 import zio.test.*
 
 import scala.collection.immutable.SortedMap
 
-object CsvHeaderSpec extends DefaultRunnableSpec {
+object CsvHeaderSpec extends ZIOSpecDefault {
 
   private val header = CsvHeader.create(::("a", List("b", "c")))(Test.decoder)
 
@@ -36,10 +35,6 @@ object CsvHeaderSpec extends DefaultRunnableSpec {
         },
       )
     }*),
-  )
-
-  override val aspects = List(
-    TestAspect.timeout(15.seconds),
   )
 
   case class Test(

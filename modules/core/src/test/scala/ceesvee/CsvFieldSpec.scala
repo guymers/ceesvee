@@ -1,6 +1,5 @@
 package ceesvee
 
-import zio.duration.*
 import zio.test.*
 
 import java.net.URI
@@ -13,12 +12,12 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
 
-object CsvFieldSpec extends DefaultRunnableSpec {
+object CsvFieldSpec extends ZIOSpecDefault {
   import CsvFieldDecoder.Error
 
   override val spec = suite("CsvField")(
-    testM("string") {
-      check(Gen.anyString) { s =>
+    test("string") {
+      check(Gen.string) { s =>
         assertGolden(s)
       }
     },
@@ -40,13 +39,13 @@ object CsvFieldSpec extends DefaultRunnableSpec {
             a && assertTrue(CsvFieldDecoder[Boolean].decode(str) == Right(bool))
           }
         },
-        testM("valid") {
+        test("valid") {
           check(Gen.boolean) { b =>
             assertGolden(b)
           }
         },
-        testM("invalid") {
-          check(Gen.anyString.filter(s => !valid.contains(s))) { s =>
+        test("invalid") {
+          check(Gen.string.filter(s => !valid.contains(s))) { s =>
             val result = CsvFieldDecoder[Boolean].decode(s)
             assertTrue(result == Left(Error(s, "invalid boolean value")))
           }
@@ -55,8 +54,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
     }*),
     suite("numbers")(
       suite("int")(
-        testM("valid") {
-          check(Gen.anyInt) { i =>
+        test("valid") {
+          check(Gen.int) { i =>
             assertGolden(i)
           }
         },
@@ -66,8 +65,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("long")(
-        testM("valid") {
-          check(Gen.anyLong) { l =>
+        test("valid") {
+          check(Gen.long) { l =>
             assertGolden(l)
           }
         },
@@ -77,8 +76,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("float")(
-        testM("valid") {
-          check(Gen.anyFloat) { f =>
+        test("valid") {
+          check(Gen.float) { f =>
             assertGolden(f)
           }
         },
@@ -88,8 +87,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("double")(
-        testM("valid") {
-          check(Gen.anyDouble) { d =>
+        test("valid") {
+          check(Gen.double) { d =>
             assertGolden(d)
           }
         },
@@ -99,7 +98,7 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("big decimal")(
-        testM("valid") {
+        test("valid") {
           check(Gen.bigDecimal(Double.MinValue, Double.MaxValue)) { d =>
             assertGolden(d)
           }
@@ -112,8 +111,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
     ),
     suite("times")(
       suite("date")(
-        testM("valid") {
-          check(Gen.anyLocalDate) { date =>
+        test("valid") {
+          check(Gen.localDate) { date =>
             assertGolden(date)
           }
         },
@@ -126,8 +125,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("date time")(
-        testM("valid") {
-          check(Gen.anyLocalDateTime) { dateTime =>
+        test("valid") {
+          check(Gen.localDateTime) { dateTime =>
             assertGolden(dateTime)
           }
         },
@@ -140,8 +139,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("time")(
-        testM("valid") {
-          check(Gen.anyLocalTime) { time =>
+        test("valid") {
+          check(Gen.localTime) { time =>
             assertGolden(time)
           }
         },
@@ -154,8 +153,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("instant")(
-        testM("valid") {
-          check(Gen.anyInstant) { instant =>
+        test("valid") {
+          check(Gen.instant) { instant =>
             assertGolden(instant)
           }
         },
@@ -168,8 +167,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("offset date time")(
-        testM("valid") {
-          check(Gen.anyOffsetDateTime) { dateTime =>
+        test("valid") {
+          check(Gen.offsetDateTime) { dateTime =>
             assertGolden(dateTime)
           }
         },
@@ -179,8 +178,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("zoned date time")(
-        testM("valid") {
-          check(Gen.anyZonedDateTime) { dateTime =>
+        test("valid") {
+          check(Gen.zonedDateTime) { dateTime =>
             assertGolden(dateTime)
           }
         },
@@ -193,8 +192,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
         },
       ),
       suite("zone")(
-        testM("valid") {
-          check(Gen.anyZoneId) { id =>
+        test("valid") {
+          check(Gen.zoneId) { id =>
             assertGolden(id)
           }
         },
@@ -205,8 +204,8 @@ object CsvFieldSpec extends DefaultRunnableSpec {
       ),
     ),
     suite("uuid")(
-      testM("valid") {
-        check(Gen.anyUUID) { uuid =>
+      test("valid") {
+        check(Gen.uuid) { uuid =>
           assertGolden(uuid)
         }
       },
@@ -241,8 +240,4 @@ object CsvFieldSpec extends DefaultRunnableSpec {
     val decoded = CsvFieldDecoder[T].decode(encoded)
     assertTrue(decoded == Right(t))
   }
-
-  override val aspects = List(
-    TestAspect.timeout(15.seconds),
-  )
 }

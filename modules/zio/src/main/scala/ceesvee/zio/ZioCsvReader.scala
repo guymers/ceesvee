@@ -1,13 +1,15 @@
 package ceesvee.zio
 
+import _root_.zio.Cause
 import _root_.zio.Chunk
 import _root_.zio.NonEmptyChunk
 import _root_.zio.Ref
+import _root_.zio.Scope
+import _root_.zio.Trace
 import _root_.zio.ZIO
-import _root_.zio.ZManaged
+import _root_.zio.stream.ZPipeline
 import _root_.zio.stream.ZSink
 import _root_.zio.stream.ZStream
-import _root_.zio.stream.ZTransducer
 import ceesvee.CsvHeader
 import ceesvee.CsvParser
 import ceesvee.CsvReader
@@ -29,18 +31,22 @@ object ZioCsvReader {
     stream: ZStream[R, E, String],
     header: CsvHeader[T],
     options: CsvReader.Options,
-  ): ZManaged[R, Either[Either[E, Error], CsvHeader.MissingHeaders], ZStream[R, Either[E, Error], Either[CsvRecordDecoder.Error, T]]] = {
+  )(implicit
+    trace: Trace,
+  ): ZIO[Scope & R, Either[Either[E, Error], CsvHeader.MissingHeaders], ZStream[R, Either[E, Error], Either[CsvRecordDecoder.Error, T]]] = {
     for {
       tuple <- stream.mapError(Left(_)).peel {
         extractFirstLine(maximumLineLength = options.maximumLineLength).mapError(Right(_))
       }.mapError(Left(_))
       ((headerFields, state, records), s) = tuple
-      decoder <- ZIO.fromEither(header.create(headerFields)).mapError(Right(_)).toManaged_
-      transducer = ZioCsvParser._parse(state, options)
+      decoder <- header.create(headerFields) match {
+        case Left(error) => ZIO.refailCause(Cause.fail(error)).mapError(Right(_))
+        case Right(decoder) => ZIO.succeed(decoder)
+      }
+      pipeline = ZioCsvParser._parse(state, options)
     } yield {
       (
-        ZStream.fromChunk(records) ++
-          s.transduce(transducer.mapError(Right(_)))
+        ZStream.fromChunk(records) ++ (s >>> pipeline.mapError(Right(_)))
       ).map(decoder.decode(_))
     }
   }
@@ -50,14 +56,11 @@ object ZioCsvReader {
    */
   def decode[T](
     options: CsvReader.Options,
-  )(implicit D: CsvRecordDecoder[T]): ZTransducer[Any, Error, String, Either[CsvRecordDecoder.Error, T]] = {
-    ZioCsvParser.parse(options).map(D.decode(_))
+  )(implicit D: CsvRecordDecoder[T], trace: Trace): ZPipeline[Any, Error, String, Either[CsvRecordDecoder.Error, T]] = {
+    ZioCsvParser.parse(options) >>> ZPipeline.map(D.decode(_))
   }
 
-  private def extractFirstLine(
-    maximumLineLength: Int,
-  ): ZSink[Any, Error, String, String, (Chunk[String], State, Chunk[Chunk[String]])] = {
-    import ZSink.Push
+  private def extractFirstLine(maximumLineLength: Int)(implicit trace: Trace) = {
 
     val initial: Chunk[Chunk[String]] = Chunk.empty
 
@@ -68,26 +71,34 @@ object ZioCsvReader {
       }
     }
 
-    ZSink {
-      Ref.makeManaged((State.initial, initial)).map { stateRef =>
-        {
-          case None => stateRef.get.flatMap { case (state, lines) =>
-              done(state, lines).getOrElse(Push.emit((Chunk.empty, state, lines), Chunk.empty))
-            }
+    val push = Ref.make((State.initial, initial)).map { stateRef => (chunk: Option[Chunk[String]]) =>
+      chunk match {
+        case None => stateRef.get.flatMap { case (state, lines) =>
+            done(state, lines).getOrElse(Push.emit((Chunk.empty, state, lines), Chunk.empty))
+          }
 
-          case Some(strings: Chunk[String]) =>
-            stateRef.get.flatMap { case (state, records) =>
-              if (state.leftover.length > maximumLineLength) {
-                Push.fail(Error.LineTooLong(maximumLineLength), Chunk.empty)
-              } else {
-                val (newState, lines) = splitStrings(strings, state)
-                val moreRecords = lines.filter(str => !ignoreLine(str)).map(parseLine[Chunk](_))
-                val _records = records ++ moreRecords
-                done(newState, _records).getOrElse(stateRef.set((newState, _records)) *> Push.more)
-              }
+        case Some(strings) =>
+          stateRef.get.flatMap { case (state, records) =>
+            if (state.leftover.length > maximumLineLength) {
+              Push.fail(Error.LineTooLong(maximumLineLength), Chunk.empty)
+            } else {
+              val (newState, lines) = splitStrings(strings, state)
+              val moreRecords = lines.filter(str => !ignoreLine(str)).map(parseLine[Chunk](_))
+              val _records = records ++ moreRecords
+              done(newState, _records).getOrElse(stateRef.set((newState, _records)) *> Push.more)
             }
-        }
+          }
       }
     }
+
+    ZSink.fromPush(push)
+  }
+
+  object Push {
+    val more: ZIO[Any, Nothing, Unit] = ZIO.unit
+    def emit[I, Z](z: Z, leftover: Chunk[I]): ZIO[Any, (Right[Nothing, Z], Chunk[I]), Nothing] =
+      ZIO.refailCause(Cause.fail((Right(z), leftover)))
+    def fail[I, E](e: E, leftover: Chunk[I]): ZIO[Any, (Left[E, Nothing], Chunk[I]), Nothing] =
+      ZIO.fail((Left(e), leftover))
   }
 }

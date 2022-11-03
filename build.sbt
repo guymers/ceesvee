@@ -1,10 +1,10 @@
 // format: off
 
-val fs2Version = "3.2.14"
+val fs2Version = "3.3.0"
 val shapelessVersion = "2.3.10"
-val zioVersion = "1.0.17"
+val zioVersion = "2.0.3"
 
-val Scala213 = "2.13.9"
+val Scala213 = "2.13.10"
 val Scala3 = "3.2.0"
 
 inThisBuild(Seq(
@@ -69,7 +69,8 @@ lazy val commonSettings = Seq(
     Wart.Any,
     Wart.Equals,
     Wart.FinalCaseClass,
-    Wart.Nothing
+    Wart.ImplicitParameter,
+    Wart.Nothing,
   ),
   Test / compile / wartremoverErrors := Seq(
     Wart.NonUnitStatements,
