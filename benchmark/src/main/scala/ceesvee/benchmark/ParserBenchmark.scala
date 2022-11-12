@@ -22,7 +22,7 @@ class ParserBenchmark {
     linesChunked.foreach { str =>
       streams.add(new ByteArrayInputStream(str.getBytes(StandardCharsets.UTF_8)))
     }
-    val is = new SequenceInputStream(java.util.Collections.enumeration(streams));
+    val is = new SequenceInputStream(java.util.Collections.enumeration(streams))
     new InputStreamReader(is)
   }
 

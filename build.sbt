@@ -5,7 +5,7 @@ val shapelessVersion = "2.3.10"
 val zioVersion = "2.0.3"
 
 val Scala213 = "2.13.10"
-val Scala3 = "3.2.0"
+val Scala3 = "3.2.1"
 
 inThisBuild(Seq(
   organization := "io.github.guymers",
@@ -94,7 +94,6 @@ lazy val zioTestSettings = Seq(
     "dev.zio" %% "zio-test" % zioVersion % Test,
     "dev.zio" %% "zio-test-sbt" % zioVersion % Test,
   ),
-  testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
 )
 
 def proj(name: String, dir: Option[String]) =
@@ -145,7 +144,6 @@ lazy val zio = module("zio")
   .dependsOn(core)
 
 lazy val benchmark = proj("benchmark", None)
-  .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(
     libraryDependencies ++= Seq(
@@ -155,7 +153,9 @@ lazy val benchmark = proj("benchmark", None)
   )
   .dependsOn(core)
   .enablePlugins(JmhPlugin)
-  .disablePlugins(MimaPlugin)
+  .disablePlugins(MimaPlugin, WartRemover)
+
+Global / excludeLintKeys += benchmark / Compile / compile / wartremoverErrors
 
 
 val TestCsvFiles = Map(
@@ -174,7 +174,7 @@ val TestCsvFiles = Map(
   // https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads
   "uk-property-sales-price-paid-2019.csv" -> (
     "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2019.csv",
-    "f1c80e09b31039b5f88a73aade36f5dfa5b2c878",
+    "94bc07c037e6b60767b762a181d6def40598234b",
   ),
 )
 
@@ -207,7 +207,6 @@ def downloadTestCsvFile(log: Logger, file: File): Unit = {
 def _testCsvFilesDir(base: File) = base / "target" / "scala" / "resource_managed" / "test"
 
 lazy val tests = proj("tests", None)
-  .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(zioTestSettings)
   .settings(
@@ -226,4 +225,3 @@ lazy val tests = proj("tests", None)
   )
   .dependsOn(core, fs2, zio)
   .disablePlugins(MimaPlugin)
-
