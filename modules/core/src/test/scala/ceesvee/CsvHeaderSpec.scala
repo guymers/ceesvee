@@ -29,10 +29,10 @@ object CsvHeaderSpec extends ZIOSpecDefault {
         val map = decoder.withHeaders(row)
         val result = decoder.decode(row)
         assertTrue(map == Map("a" -> "str", "b" -> "invalid", "c" -> "true")) &&
-        assertTrue(result == Left(CsvHeader.Error(
+        assertTrue(result == Left(CsvHeader.Errors(
           map,
           SortedMap(
-            "b" -> CsvRecordDecoder.Error.Field.Invalid(CsvFieldDecoder.Error("invalid", "invalid int value")),
+            "b" -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("invalid", "invalid int value")),
           ),
         )))
       } :: Nil

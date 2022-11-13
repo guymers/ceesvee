@@ -14,7 +14,7 @@ trait CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
   def join[T](cc: CaseClass[Typeclass, T]): Typeclass[T] = new CsvRecordDecoder[T] {
     override val numFields = cc.parameters.foldLeft(0)(_ + _.typeclass.numFields)
     override def decode(fields: IndexedSeq[String]) = {
-      val errs = SortedMap.newBuilder[Int, Error.Field]
+      val errs = SortedMap.newBuilder[Int, Errors.Error]
       val values = Array.ofDim[Any](cc.parameters.length)
 
       val _ = cc.parameters.foldLeft((0, 0)) { case ((index, offset), p) =>
@@ -27,7 +27,7 @@ trait CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
       }
 
       val errs_ = errs.result()
-      if (errs_.nonEmpty) Left(Error(fields, errs_))
+      if (errs_.nonEmpty) Left(Errors(fields, errs_))
       else Right(cc.rawConstruct(ArraySeq.unsafeWrapArray(values)))
     }
   }

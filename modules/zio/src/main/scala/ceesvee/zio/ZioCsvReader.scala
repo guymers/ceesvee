@@ -33,7 +33,7 @@ object ZioCsvReader {
     options: CsvReader.Options,
   )(implicit
     trace: Trace,
-  ): ZIO[Scope & R, Either[Either[E, Error], CsvHeader.MissingHeaders], ZStream[R, Either[E, Error], Either[CsvHeader.Error, T]]] = {
+  ): ZIO[Scope & R, Either[Either[E, Error], CsvHeader.MissingHeaders], ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]]] = {
     for {
       tuple <- stream.mapError(Left(_)).peel {
         extractFirstLine(maximumLineLength = options.maximumLineLength).mapError(Right(_))
@@ -56,7 +56,10 @@ object ZioCsvReader {
    */
   def decode[T](
     options: CsvReader.Options,
-  )(implicit D: CsvRecordDecoder[T], trace: Trace): ZPipeline[Any, Error, String, Either[CsvRecordDecoder.Error, T]] = {
+  )(implicit
+    D: CsvRecordDecoder[T],
+    trace: Trace,
+  ): ZPipeline[Any, Error, String, Either[CsvRecordDecoder.Errors, T]] = {
     ZioCsvParser.parse(options) >>> ZPipeline.map(D.decode(_))
   }
 

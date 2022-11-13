@@ -25,7 +25,7 @@ class DecoderBenchmark {
   private val rowIndexedSeq = ArraySeq.unsafeWrapArray(row)
 
   @Benchmark
-  def ceesvee: Either[CsvRecordDecoder.Error, TestDecodeScala] = {
+  def ceesvee: Either[CsvRecordDecoder.Errors, TestDecodeScala] = {
     TestDecodeScala.decoder.decode(rowIndexedSeq)
   }
 

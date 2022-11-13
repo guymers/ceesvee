@@ -5,26 +5,47 @@ import scala.util.control.NoStackTrace
 
 trait CsvRecordDecoder[A] { self =>
   def numFields: Int
-  def decode(fields: IndexedSeq[String]): Either[CsvRecordDecoder.Error, A]
+  def decode(fields: IndexedSeq[String]): Either[CsvRecordDecoder.Errors, A]
 
-  final def map[B](f: A => B): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
+  final def map[B](f: A => B): CsvRecordDecoder[B] = emap(a => Right(f(a)))
+
+  final def emap[B](f: A => Either[String, B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
     override val numFields = self.numFields
-    override def decode(fields: IndexedSeq[String]) = self.decode(fields).map(f(_))
+    override def decode(fields: IndexedSeq[String]) = {
+      self.decode(fields).flatMap { a =>
+        f(a).left.map { msg =>
+          // stick the error on the first column
+          val errors = SortedMap(0 -> CsvRecordDecoder.Errors.Record(msg))
+          CsvRecordDecoder.Errors(fields, errors)
+        }
+      }
+    }
   }
 }
 object CsvRecordDecoder extends CsvRecordDecoder1 {
 
-  final case class Error(
+  final case class Errors(
     raw: Iterable[String],
-    errors: SortedMap[Int, Error.Field],
+    errors: SortedMap[Int, Errors.Error],
   ) extends RuntimeException({
       val reasons = errors.toList.map({ case (i, e) => s"index ${i.toString} ${e.toString}" })
       s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.toString}"
     }) with NoStackTrace
-  object Error {
+  object Errors {
 
-    sealed trait Field {
-      override val toString = this match {
+    sealed trait Error {
+      override val toString: String = this match {
+        case r: Record => r.toString
+        case f: Field => f.toString
+      }
+    }
+
+    final case class Record(error: String) extends Error {
+      override val toString: String = error
+    }
+
+    sealed trait Field extends Error {
+      override val toString: String = this match {
         case Field.Invalid(error) => error.getMessage
         case Field.Missing => "Missing field"
       }
@@ -42,10 +63,10 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
       override val numFields = 1
       @SuppressWarnings(Array("org.wartremover.warts.IterableOps"))
       override def decode(fields: IndexedSeq[String]) = {
-        if (fields.isEmpty) Left(Error(fields, SortedMap(0 -> Error.Field.Missing)))
+        if (fields.isEmpty) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing)))
         else {
           D.decode(fields.head).left.map { err =>
-            Error(fields, SortedMap(0 -> Error.Field.Invalid(err)))
+            Errors(fields, SortedMap(0 -> Errors.Field.Invalid(err)))
           }
         }
       }
@@ -57,11 +78,11 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
       override val numFields = 1
       @SuppressWarnings(Array("org.wartremover.warts.IterableOps"))
       override def decode(fields: IndexedSeq[String]) = {
-        if (fields.isEmpty) Left(Error(fields, SortedMap(0 -> Error.Field.Missing)))
+        if (fields.isEmpty) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing)))
         else if (isNone(fields.head)) Right(None)
         else {
           D.decode(fields.head).map(Some(_)).left.map { err =>
-            Error(fields, SortedMap(0 -> Error.Field.Invalid(err)))
+            Errors(fields, SortedMap(0 -> Errors.Field.Invalid(err)))
           }
         }
       }

@@ -27,9 +27,9 @@ object CsvHeader {
     extends RuntimeException(s"Missing headers: ${missing.mkString(", ")}")
     with NoStackTrace
 
-  final case class Error(
+  final case class Errors(
     raw: Map[String, String],
-    errors: SortedMap[String, CsvRecordDecoder.Error.Field],
+    errors: SortedMap[String, CsvRecordDecoder.Errors.Error],
   ) extends RuntimeException({
       val reasons = errors.toList.map({ case (h, e) => s"column $h ${e.toString}" })
       s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.toString}"
@@ -47,7 +47,7 @@ object CsvHeader {
 
   sealed trait Decoder[A] {
     def withHeaders(fields: IndexedSeq[String]): Map[String, String]
-    def decode(fields: IndexedSeq[String]): Either[Error, A]
+    def decode(fields: IndexedSeq[String]): Either[Errors, A]
   }
   object Decoder {
 
@@ -74,11 +74,11 @@ object CsvHeader {
         }.toMap
       }
 
-      def convertError(error: CsvRecordDecoder.Error, fields: Map[String, String]) = {
+      def convertError(error: CsvRecordDecoder.Errors, fields: Map[String, String]) = {
         val errors = error.errors.map { case (i, error) =>
           orderingToHeader.getOrElse(i, s"<${i.toString}>") -> error
         }
-        Error(fields, errors)
+        Errors(fields, errors)
       }
 
       if (ordering.zipWithIndex.forall({ case (a, b) => a == b })) {

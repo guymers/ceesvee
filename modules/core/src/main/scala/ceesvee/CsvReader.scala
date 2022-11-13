@@ -28,10 +28,10 @@ object CsvReader {
     in: Iterator[String],
     header: CsvHeader[T],
     options: Options,
-  ): Either[CsvHeader.MissingHeaders, Iterator[Either[CsvHeader.Error, T]]] = {
+  ): Either[CsvHeader.MissingHeaders, Iterator[Either[CsvHeader.Errors, T]]] = {
 
     @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
-    object decode extends (IndexedSeq[String] => Iterator[Either[CsvHeader.Error, T]]) {
+    object decode extends (IndexedSeq[String] => Iterator[Either[CsvHeader.Errors, T]]) {
       private var decoder: CsvHeader.Decoder[T] = _
 
       override def apply(fields: IndexedSeq[String]) = {
@@ -67,7 +67,7 @@ object CsvReader {
   def decode[T](
     in: Iterator[String],
     options: Options,
-  )(implicit D: CsvRecordDecoder[T]): Iterator[Either[CsvRecordDecoder.Error, T]] = {
+  )(implicit D: CsvRecordDecoder[T]): Iterator[Either[CsvRecordDecoder.Errors, T]] = {
     parse[IndexedSeq](in, options).map(fields => D.decode(fields))
   }
 }
