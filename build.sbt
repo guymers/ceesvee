@@ -1,7 +1,6 @@
 // format: off
 
 val fs2Version = "3.3.0"
-val shapelessVersion = "2.3.10"
 val zioVersion = "2.0.3"
 
 val Scala213 = "2.13.10"
@@ -120,7 +119,8 @@ lazy val core = module("core")
   .settings(
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(
-        "com.chuusai" %% "shapeless" % shapelessVersion,
+        "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.2",
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       )
       case _ => Seq.empty
     }),

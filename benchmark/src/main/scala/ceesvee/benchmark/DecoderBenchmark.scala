@@ -7,6 +7,7 @@ import com.univocity.parsers.common.processor.BeanListProcessor
 import org.openjdk.jmh.annotations.*
 
 import java.util.concurrent.TimeUnit
+import scala.collection.immutable.ArraySeq
 
 @State(Scope.Thread)
 @BenchmarkMode(Array(Mode.AverageTime))
@@ -21,16 +22,11 @@ class DecoderBenchmark {
     /*bool*/ "true",
     /*optInt*/ "5",
   )
-  private val rowNotIndexed = row.toList
+  private val rowIndexedSeq = ArraySeq.unsafeWrapArray(row)
 
   @Benchmark
   def ceesvee: Either[CsvRecordDecoder.Error, TestDecodeScala] = {
-    TestDecodeScala.decoder.decode(row)
-  }
-
-  @Benchmark
-  def ceesveeRowNotIndexed: Either[CsvRecordDecoder.Error, TestDecodeScala] = {
-    TestDecodeScala.decoder.decode(rowNotIndexed)
+    TestDecodeScala.decoder.decode(rowIndexedSeq)
   }
 
   private val univocityProcessor = {

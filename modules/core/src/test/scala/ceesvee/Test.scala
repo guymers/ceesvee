@@ -9,6 +9,6 @@ case class Test(
   optInt: Option[Int],
 )
 object Test {
-  implicit val decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derive
-  implicit val encoder: CsvRecordEncoder[Test] = CsvRecordEncoder.derive
+  implicit val decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derived
+  implicit val encoder: CsvRecordEncoder[Test] = CsvRecordEncoder.derived
 }

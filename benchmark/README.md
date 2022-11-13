@@ -15,8 +15,7 @@ ParserBenchmark.univocity  avgt   10   316.237 ± 3.499  us/op
 ```
 # JMH version: 1.32
 # VM version: JDK 17.0.5, OpenJDK 64-Bit Server VM, 17.0.5+8-jvmci-22.3-b08
-Benchmark                              Mode  Cnt  Score    Error  Units
-DecoderBenchmark.ceesvee               avgt   10  1.426 ±  0.008  us/op
-DecoderBenchmark.ceesveeRowNotIndexed  avgt   10  1.452 ±  0.015  us/op
-DecoderBenchmark.univocity             avgt   10  0.012 ±  0.001  us/op
+Benchmark                   Mode  Cnt  Score    Error  Units
+DecoderBenchmark.ceesvee    avgt   10  0.116 ±  0.001  us/op
+DecoderBenchmark.univocity  avgt   10  0.012 ±  0.001  us/op
 ```

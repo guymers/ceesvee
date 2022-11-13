@@ -96,11 +96,6 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
       case e: IllegalArgumentException => Left(Error(str, e.getMessage))
     }
   }
-
-  // an empty string is considered `None`
-  implicit def option[T](implicit D: CsvFieldDecoder[T]): CsvFieldDecoder[Option[T]] = instance { str =>
-    if (str.isEmpty) Right(None) else D.decode(str).map(Some(_))
-  }
 }
 
 sealed trait CsvFieldDecoder1 { self: CsvFieldDecoder.type =>

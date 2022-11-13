@@ -20,6 +20,6 @@ object UkCausewayCoast {
   // note ignoring "OBJECTID" header, "Town" swapped with "Postcode"
   val header = NonEmptyChunk("X", "Y", "Name", "Address", "Town", "Postcode", "Website")
 
-  implicit val decoder: CsvRecordDecoder[UkCausewayCoast] = CsvRecordDecoder.derive
+  implicit val decoder: CsvRecordDecoder[UkCausewayCoast] = CsvRecordDecoder.derived
   val csvHeader = CsvHeader.create(header.toCons)(decoder)
 }

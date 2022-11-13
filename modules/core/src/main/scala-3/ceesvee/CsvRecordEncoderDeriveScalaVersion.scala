@@ -1,30 +1,34 @@
 package ceesvee
 
+import scala.compiletime.erasedValue
+import scala.compiletime.summonInline
 import scala.deriving.Mirror
 
-@SuppressWarnings(Array("org.wartremover.warts.ImplicitParameter"))
-trait CsvRecordEncoderDeriveScalaVersion {
+trait CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
 
-  given CsvRecordEncoderDerive[EmptyTuple] = {
-    CsvRecordEncoderDerive.instance(_ => Iterable.empty)
-  }
-
-  given [H, T <: Tuple](using
-    H: => CsvRecordEncoder[H],
-    T: => CsvRecordEncoderDerive[T],
-  ): CsvRecordEncoderDerive[H *: T] = {
-    CsvRecordEncoderDerive.instance { case h *: t =>
-      H.encode(h) ++ T.encode(t)
+  inline def summonAll[T <: Tuple]: List[CsvRecordEncoder[_]] = {
+    inline erasedValue[T] match {
+      case _: EmptyTuple => Nil
+      case _: (t *: ts) => summonInline[CsvRecordEncoder[t]] :: summonAll[ts]
     }
   }
 
-  given [A <: Product, T](using
-    m: Mirror.ProductOf[A],
-    ev: m.MirroredElemTypes =:= T,
-    encoder: => CsvRecordEncoderDerive[T],
-  ): CsvRecordEncoderDerive[A] = {
-    CsvRecordEncoderDerive.instance { a =>
-      encoder.encode(Tuple.fromProductTyped(a))
+  inline def derived[A](using m: Mirror.ProductOf[A]): CsvRecordEncoder[A] = {
+    lazy val instances = summonAll[m.MirroredElemTypes]
+
+    new CsvRecordEncoder[A] {
+      override val numFields = instances.foldLeft(0)(_ + _.numFields)
+      override def encode(a: A) = {
+        val builder = IndexedSeq.newBuilder[String]
+        builder.sizeHint(numFields)
+
+        instances.zipWithIndex.foreach { case (p: CsvRecordEncoder[a], index) =>
+          val v = a.asInstanceOf[Product].productElement(index).asInstanceOf[a]
+          builder.addAll(p.encode(v))
+        }
+
+        builder.result()
+      }
     }
   }
 }

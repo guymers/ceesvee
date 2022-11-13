@@ -50,9 +50,4 @@ object CsvFieldEncoder {
 
   implicit val uri: CsvFieldEncoder[URI] = fromToString
   implicit val uuid: CsvFieldEncoder[UUID] = fromToString
-
-  implicit def option[A](implicit E: CsvFieldEncoder[A]): CsvFieldEncoder[Option[A]] = instance {
-    case None => ""
-    case Some(a) => E.encode(a)
-  }
 }

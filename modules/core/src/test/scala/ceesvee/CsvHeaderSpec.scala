@@ -17,23 +17,25 @@ object CsvHeaderSpec extends ZIOSpecDefault {
       val headers = List("_a", "a", "_b", "b", "_c", "c", "_d")
       val decoder = header.create(headers).toOption.get
 
-      List(
-        test("valid row") {
-          val row = List("", "str", "", "1", "", "true", "")
-          val result = decoder.decode(row)
-          assertTrue(result == Right(Test("str", 1, true)))
-        },
-        test("invalid row") {
-          val row = List("", "str", "", "invalid", "", "true", "")
-          val result = decoder.decode(row)
-          assertTrue(result == Left(CsvRecordDecoder.Error(
-            row,
-            SortedMap(
-              3 -> CsvRecordDecoder.Error.Field.Invalid(CsvFieldDecoder.Error("invalid", "invalid int value")),
-            ),
-          )))
-        },
-      )
+      test("valid row") {
+        val row = Vector("", "str", "", "1", "", "true", "")
+        val map = decoder.withHeaders(row)
+        val result = decoder.decode(row)
+        assertTrue(map == Map("a" -> "str", "b" -> "1", "c" -> "true")) &&
+        assertTrue(result == Right(Test("str", 1, true)))
+      } ::
+      test("invalid row") {
+        val row = Vector("", "str", "", "invalid", "", "true", "")
+        val map = decoder.withHeaders(row)
+        val result = decoder.decode(row)
+        assertTrue(map == Map("a" -> "str", "b" -> "invalid", "c" -> "true")) &&
+        assertTrue(result == Left(CsvHeader.Error(
+          map,
+          SortedMap(
+            "b" -> CsvRecordDecoder.Error.Field.Invalid(CsvFieldDecoder.Error("invalid", "invalid int value")),
+          ),
+        )))
+      } :: Nil
     }*),
   )
 
@@ -43,6 +45,6 @@ object CsvHeaderSpec extends ZIOSpecDefault {
     c: Boolean,
   )
   object Test {
-    implicit val decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derive
+    implicit val decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derived
   }
 }

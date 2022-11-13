@@ -33,7 +33,7 @@ object ZioCsvReader {
     options: CsvReader.Options,
   )(implicit
     trace: Trace,
-  ): ZIO[Scope & R, Either[Either[E, Error], CsvHeader.MissingHeaders], ZStream[R, Either[E, Error], Either[CsvRecordDecoder.Error, T]]] = {
+  ): ZIO[Scope & R, Either[Either[E, Error], CsvHeader.MissingHeaders], ZStream[R, Either[E, Error], Either[CsvHeader.Error, T]]] = {
     for {
       tuple <- stream.mapError(Left(_)).peel {
         extractFirstLine(maximumLineLength = options.maximumLineLength).mapError(Right(_))

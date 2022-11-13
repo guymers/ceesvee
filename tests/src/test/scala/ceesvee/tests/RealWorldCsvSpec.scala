@@ -44,7 +44,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         website = URI.create("http://www.discovernorthernireland.com/Hezlett-House-Castlerock-Coleraine-P8295"),
       )
 
-      def assertResult(result: Seq[Either[CsvRecordDecoder.Error, UkCausewayCoast]]) = {
+      def assertResult(result: Seq[Either[CsvHeader.Error, UkCausewayCoast]]) = {
         assertTrue(result.count(_.isRight) == 19) &&
         assertTrue(result.apply(6) == Right(expected))
       }

@@ -1,31 +1,27 @@
 package ceesvee
 
-import shapeless.::
-import shapeless.Generic
-import shapeless.HList
-import shapeless.HNil
+import magnolia1.CaseClass
+import magnolia1.Magnolia
 
-trait CsvRecordEncoderDeriveScalaVersion {
+import scala.language.experimental.macros
 
-  implicit val hnil: CsvRecordEncoderDerive[HNil] = {
-    CsvRecordEncoderDerive.instance(_ => Iterable.empty)
-  }
+trait CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
 
-  implicit def hcons[H, T <: HList](implicit
-    H: => CsvRecordEncoder[H],
-    T: => CsvRecordEncoderDerive[T],
-  ): CsvRecordEncoderDerive[H :: T] = {
-    CsvRecordEncoderDerive.instance { case h :: t =>
-      H.encode(h) ++ T.encode(t)
+  type Typeclass[T] = CsvRecordEncoder[T]
+
+  def join[T](cc: CaseClass[Typeclass, T]): Typeclass[T] = new CsvRecordEncoder[T] {
+    override val numFields = cc.parameters.foldLeft(0)(_ + _.typeclass.numFields)
+    override def encode(t: T) = {
+      val builder = IndexedSeq.newBuilder[String]
+      builder.sizeHint(numFields)
+
+      cc.parameters.foreach { p =>
+        builder.addAll(p.typeclass.encode(p.dereference(t)))
+      }
+
+      builder.result()
     }
   }
 
-  implicit def generic[T, G](implicit
-    gen: Generic.Aux[T, G],
-    encoder: => CsvRecordEncoderDerive[G],
-  ): CsvRecordEncoderDerive[T] = {
-    CsvRecordEncoderDerive.instance { t =>
-      encoder.encode(gen.to(t))
-    }
-  }
+  def derived[A]: CsvRecordEncoder[A] = macro Magnolia.gen[A]
 }

@@ -1,36 +1,43 @@
 package ceesvee
 
+import scala.collection.immutable.SortedMap
+import scala.compiletime.erasedValue
+import scala.compiletime.summonInline
 import scala.deriving.Mirror
 
-@SuppressWarnings(Array("org.wartremover.warts.ImplicitParameter"))
-trait CsvRecordDecoderDeriveScalaVersion {
+trait CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
 
-  given CsvRecordDecoderDerive[EmptyTuple] = {
-    new CsvRecordDecoderDerive(Nil, _ => EmptyTuple)
+  inline def summonAll[T <: Tuple]: List[CsvRecordDecoder[_]] = {
+    inline erasedValue[T] match {
+      case _: EmptyTuple => Nil
+      case _: (t *: ts) => summonInline[CsvRecordDecoder[t]] :: summonAll[ts]
+    }
   }
 
-  given [H, T <: Tuple](using
-    H: => CsvRecordDecoder[H],
-    T: => CsvRecordDecoderDerive[T],
-  ): CsvRecordDecoderDerive[H *: T] = {
-    new CsvRecordDecoderDerive[H *: T](
-      H.decoders ::: T.decoders,
-      values => {
-        val (h, t) = values.splitAt(H.decoders.length)
-        H.lift(h) *: T.lift(t)
-      },
-    )
-  }
+  inline def derived[A](using m: Mirror.ProductOf[A]): CsvRecordDecoder[A] = {
+    lazy val instances = summonAll[m.MirroredElemTypes]
 
-  given [A <: Product, T](using
-    m: Mirror.ProductOf[A],
-    ev: T =:= m.MirroredElemTypes,
-    decoder: => CsvRecordDecoderDerive[T],
-  ): CsvRecordDecoderDerive[A] = {
-    new CsvRecordDecoderDerive[A](
-      decoder.decoders,
-      values => m.fromProduct(ev(decoder.lift(values))),
-    )
-  }
+    new CsvRecordDecoder[A] {
+      private val length = instances.length
 
+      override val numFields = instances.foldLeft(0)(_ + _.numFields)
+      override def decode(fields: IndexedSeq[String]) = {
+        val errs = SortedMap.newBuilder[Int, Error.Field]
+        val values = Array.ofDim[Any](length)
+
+        val _ = instances.foldLeft((0, 0)) { case ((index, offset), p) =>
+          val num = p.numFields
+          p.decode(fields.slice(offset, offset + num)) match {
+            case Left(error) => error.errors.foreach { case (k, v) => errs.addOne((k + offset, v)) }
+            case Right(v) => values.update(index, v)
+          }
+          (index + 1, offset + num)
+        }
+
+        val errs_ = errs.result()
+        if (errs_.nonEmpty) Left(Error(fields, errs_))
+        else Right(m.fromProduct(Tuple.fromArray(values)))
+      }
+    }
+  }
 }

@@ -28,13 +28,13 @@ object Fs2CsvReader {
   def decodeWithHeader[F[_]: RaiseThrowable, T](
     header: CsvHeader[T],
     options: CsvReader.Options,
-  ): Pipe[F, String, Either[CsvRecordDecoder.Error, T]] = {
+  ): Pipe[F, String, Either[CsvHeader.Error, T]] = {
 
     @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
     def go(
       stream: Stream[F, ArraySeq[String]],
       decoder: Option[CsvHeader.Decoder[T]],
-    ): Pull[F, Either[CsvRecordDecoder.Error, T], Unit] =
+    ): Pull[F, Either[CsvHeader.Error, T], Unit] =
       stream.pull.uncons.flatMap {
 
         case None =>

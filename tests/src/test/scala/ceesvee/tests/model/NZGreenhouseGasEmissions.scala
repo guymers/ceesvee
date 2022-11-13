@@ -32,6 +32,6 @@ object NZGreenhouseGasEmissions {
     "data_value",
   )
 
-  implicit val decoder: CsvRecordDecoder[NZGreenhouseGasEmissions] = CsvRecordDecoder.derive
+  implicit val decoder: CsvRecordDecoder[NZGreenhouseGasEmissions] = CsvRecordDecoder.derived
   val csvHeader = CsvHeader.create(header.toCons)(decoder)
 }

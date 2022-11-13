@@ -1,41 +1,50 @@
 package ceesvee
 
-import scala.collection.mutable.ListBuffer
-
-sealed trait CsvRecordEncoder[A] { self =>
-  def encode(a: A): Iterable[String]
+trait CsvRecordEncoder[A] { self =>
+  def numFields: Int
+  def encode(a: A): IndexedSeq[String]
 
   final def contramap[B](f: B => A): CsvRecordEncoder[B] = new CsvRecordEncoder[B] {
+    override val numFields = self.numFields
     override def encode(b: B) = self.encode(f(b))
   }
 }
-object CsvRecordEncoder {
+object CsvRecordEncoder extends CsvRecordEncoder1 {
 
   def apply[T](implicit E: CsvRecordEncoder[T]): CsvRecordEncoder[T] = E
 
-  def derive[T](implicit E: CsvRecordEncoderDerive[T]): CsvRecordEncoder[T] = {
+  private[ceesvee] def createField[T](implicit E: => CsvFieldEncoder[T]): CsvRecordEncoder[T] = {
     new CsvRecordEncoder[T] {
-      override def encode(t: T) = E.encode(t)
-    }
-  }
-
-  @SuppressWarnings(Array("org.wartremover.warts.ImplicitParameter"))
-  implicit def field[T](implicit E: => CsvFieldEncoder[T]): CsvRecordEncoder[T] = {
-    new CsvRecordEncoder[T] {
-      @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))
-      override def encode(t: T) = ListBuffer(E.encode(t))
+      override val numFields = 1
+      override def encode(t: T) = Vector(E.encode(t))
     }
   }
 }
 
-trait CsvRecordEncoderDerive[A] {
-  def encode(a: A): Iterable[String]
-}
-object CsvRecordEncoderDerive extends CsvRecordEncoderDeriveScalaVersion {
+// cache common field record encoders
+sealed trait CsvRecordEncoder1 extends CsvRecordEncoder2 { self: CsvRecordEncoder.type =>
 
-  def instance[A](f: A => Iterable[String]): CsvRecordEncoderDerive[A] = {
-    new CsvRecordEncoderDerive[A] {
-      override def encode(a: A) = f(a)
+  implicit val fieldString: CsvRecordEncoder[String] = createField[String]
+  implicit val fieldBoolean: CsvRecordEncoder[Boolean] = createField[Boolean]
+  implicit val fieldInt: CsvRecordEncoder[Int] = createField[Int]
+  implicit val fieldLong: CsvRecordEncoder[Long] = createField[Long]
+  implicit val fieldFloat: CsvRecordEncoder[Float] = createField[Float]
+  implicit val fieldDouble: CsvRecordEncoder[Double] = createField[Double]
+}
+
+sealed trait CsvRecordEncoder2 extends CsvRecordEncoder3 { self: CsvRecordEncoder.type =>
+
+  implicit def field[T: CsvFieldEncoder]: CsvRecordEncoder[T] = createField[T]
+}
+
+sealed trait CsvRecordEncoder3 extends CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
+
+  implicit def optional[T](implicit E: CsvRecordEncoder[T]): CsvRecordEncoder[Option[T]] = {
+    val empty = IndexedSeq.fill(E.numFields)("")
+
+    new CsvRecordEncoder[Option[T]] {
+      override val numFields = E.numFields
+      override def encode(t: Option[T]) = t.fold(empty)(E.encode(_))
     }
   }
 }

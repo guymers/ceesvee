@@ -28,13 +28,13 @@ object CsvReader {
     in: Iterator[String],
     header: CsvHeader[T],
     options: Options,
-  ): Either[CsvHeader.MissingHeaders, Iterator[Either[CsvRecordDecoder.Error, T]]] = {
+  ): Either[CsvHeader.MissingHeaders, Iterator[Either[CsvHeader.Error, T]]] = {
 
     @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
-    object decode extends (List[String] => Iterator[Either[CsvRecordDecoder.Error, T]]) {
+    object decode extends (IndexedSeq[String] => Iterator[Either[CsvHeader.Error, T]]) {
       private var decoder: CsvHeader.Decoder[T] = _
 
-      override def apply(fields: List[String]) = {
+      override def apply(fields: IndexedSeq[String]) = {
         if (decoder == null) {
           header.create(fields) match {
             case Left(err: CsvHeader.MissingHeaders) => throw err
@@ -49,7 +49,7 @@ object CsvReader {
     }
 
     try {
-      val iterator = parse[List](in, options).flatMap(decode)
+      val iterator = parse[IndexedSeq](in, options).flatMap(decode)
       Right(iterator)
     } catch {
       case e: CsvHeader.MissingHeaders => Left(e)
@@ -68,6 +68,6 @@ object CsvReader {
     in: Iterator[String],
     options: Options,
   )(implicit D: CsvRecordDecoder[T]): Iterator[Either[CsvRecordDecoder.Error, T]] = {
-    parse[List](in, options).map(fields => D.decode(fields))
+    parse[IndexedSeq](in, options).map(fields => D.decode(fields))
   }
 }
