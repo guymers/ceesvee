@@ -17,6 +17,10 @@ trait CsvFieldDecoder[A] { self =>
   final def emap[B](f: A => Either[String, B]): CsvFieldDecoder[B] = (raw: String) => {
     self.decode(raw).flatMap(a => f(a).left.map(CsvFieldDecoder.Error(raw, _)))
   }
+
+  final def eemap[B](f: A => Either[CsvFieldDecoder.Error, B]): CsvFieldDecoder[B] = (raw: String) => {
+    self.decode(raw).flatMap(f(_))
+  }
 }
 
 object CsvFieldDecoder extends CsvFieldDecoder1 {
