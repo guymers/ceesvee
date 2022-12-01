@@ -4,6 +4,7 @@ import java.net.URI
 import java.time.*
 import java.time.format.DateTimeParseException
 import java.time.zone.ZoneRulesException
+import java.util.Locale
 import java.util.UUID
 import scala.util.control.NoStackTrace
 
@@ -35,14 +36,14 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
 
   implicit val string: CsvFieldDecoder[String] = instance(Right(_))
 
-  // "true" and "t" are true, "false" and "f" are false, anything else is an error
+  // "true", "t", "yes", "y" are true
+  // "false", "f", "no", "n" are false
+  // anything else is an error
   implicit val boolean: CsvFieldDecoder[Boolean] = instance { str =>
-    if (str == "true" || str == "t") {
-      Right(true)
-    } else if (str == "false" || str == "f") {
-      Right(false)
-    } else {
-      Left(Error(str, "invalid boolean value"))
+    str.toLowerCase(Locale.ROOT) match {
+      case "true" | "t" | "yes" | "y" => Right(true)
+      case "false" | "f" | "no" | "n" => Right(false)
+      case _ => Left(Error(str, "invalid boolean value"))
     }
   }
 

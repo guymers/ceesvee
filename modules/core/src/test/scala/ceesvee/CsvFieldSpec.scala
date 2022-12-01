@@ -23,10 +23,18 @@ object CsvFieldSpec extends ZIOSpecDefault {
     },
     suite("boolean")({
       val valid = Map(
+        // true
         "t" -> true,
         "true" -> true,
+        "TRUE" -> true,
+        "yes" -> true,
+        "y" -> true,
+        // false
         "f" -> false,
         "false" -> false,
+        "FALSE" -> false,
+        "no" -> false,
+        "n" -> false,
       )
 
       List(
