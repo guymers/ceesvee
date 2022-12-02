@@ -1,7 +1,6 @@
 package ceesvee.zio
 
 import _root_.zio.Cause
-import _root_.zio.Chunk
 import _root_.zio.Scope
 import _root_.zio.Trace
 import _root_.zio.ZIO
@@ -49,14 +48,5 @@ object ZioCsvReader {
     trace: Trace,
   ): ZPipeline[Any, Error, String, Either[CsvRecordDecoder.Errors, T]] = {
     ZioCsvParser.parse(options) >>> ZPipeline.map(D.decode(_))
-  }
-
-  // TODO left for bin-compat, remove in next breaking release
-  object Push {
-    val more: ZIO[Any, Nothing, Unit] = ZIO.unit
-    def emit[I, Z](z: Z, leftover: Chunk[I]): ZIO[Any, (Right[Nothing, Z], Chunk[I]), Nothing] =
-      ZIO.refailCause(Cause.fail((Right(z), leftover)))
-    def fail[I, E](e: E, leftover: Chunk[I]): ZIO[Any, (Left[E, Nothing], Chunk[I]), Nothing] =
-      ZIO.fail((Left(e), leftover))
   }
 }

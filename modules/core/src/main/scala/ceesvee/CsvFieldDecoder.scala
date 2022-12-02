@@ -59,7 +59,7 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
   implicit val long: CsvFieldDecoder[Long] = instanceNumberFormat("long")(_.toLong)
   implicit val float: CsvFieldDecoder[Float] = instanceNumberFormat("float")(_.toFloat)
   implicit val double: CsvFieldDecoder[Double] = instanceNumberFormat("double")(_.toDouble)
-  def instanceNumberFormat[T](typeName: String)(to: String => T): CsvFieldDecoder[T] = instance { str =>
+  private def instanceNumberFormat[T](typeName: String)(to: String => T): CsvFieldDecoder[T] = instance { str =>
     try {
       Right(to(str))
     } catch {
@@ -83,7 +83,7 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
   private val DateTimeParseSpecificExceptionPrefix = "^Text '.*' could not be parsed: (.*)".r
   private val DateTimeParseExceptionPrefix = "^Text '.*' could not be parsed(.*)".r
 
-  def instanceDateTimeParse[T](typeName: String, example: String)(parse: String => T): CsvFieldDecoder[T] =
+  private def instanceDateTimeParse[T](typeName: String, example: String)(parse: String => T): CsvFieldDecoder[T] =
     instance { str =>
       try {
         Right(parse(str))
