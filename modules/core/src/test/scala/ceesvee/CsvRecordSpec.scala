@@ -30,8 +30,14 @@ object CsvRecordSpec extends ZIOSpecDefault {
       assertTrue(result == Left(CsvRecordDecoder.Errors(
         raw = fields,
         errors = SortedMap(
-          2 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("not int", "invalid int value")),
-          4 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("not bool", "invalid boolean value")),
+          2 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error(
+            "not int",
+            "invalid numeric value, required int",
+          )),
+          4 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error(
+            "not bool",
+            "invalid boolean value valid values are 't','true','y','yes' and 'f','false','n','no'",
+          )),
         ),
       )))
     },
@@ -71,9 +77,12 @@ object CsvRecordSpec extends ZIOSpecDefault {
         assertTrue(result == Left(CsvRecordDecoder.Errors(
           raw = fields,
           errors = SortedMap(
-            3 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("", "invalid int value")),
-            4 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("", "invalid float value")),
-            5 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("", "invalid boolean value")),
+            3 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("", "invalid numeric value, required int")),
+            4 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("", "invalid numeric value, required float")),
+            5 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error(
+              "",
+              "invalid boolean value valid values are 't','true','y','yes' and 'f','false','n','no'",
+            )),
           ),
         )))
       },

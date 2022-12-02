@@ -32,7 +32,10 @@ object CsvHeaderSpec extends ZIOSpecDefault {
         assertTrue(result == Left(CsvHeader.Errors(
           map,
           SortedMap(
-            "b" -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error("invalid", "invalid int value")),
+            "b" -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error(
+              "invalid",
+              "invalid numeric value, required int",
+            )),
           ),
         )))
       } :: Nil

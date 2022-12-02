@@ -6,6 +6,7 @@ import java.time.format.DateTimeParseException
 import java.time.zone.ZoneRulesException
 import java.util.Locale
 import java.util.UUID
+import scala.collection.immutable.SortedSet
 import scala.util.control.NoStackTrace
 
 trait CsvFieldDecoder[A] { self =>
@@ -39,11 +40,18 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
   // "true", "t", "yes", "y" are true
   // "false", "f", "no", "n" are false
   // anything else is an error
-  implicit val boolean: CsvFieldDecoder[Boolean] = instance { str =>
-    str.toLowerCase(Locale.ROOT) match {
-      case "true" | "t" | "yes" | "y" => Right(true)
-      case "false" | "f" | "no" | "n" => Right(false)
-      case _ => Left(Error(str, "invalid boolean value"))
+  implicit val boolean: CsvFieldDecoder[Boolean] = {
+    val trues = SortedSet("true", "t", "yes", "y")
+    val falses = SortedSet("false", "f", "no", "n")
+
+    val truesStr = trues.map(s => s"'$s'").mkString(",")
+    val falsesStr = falses.map(s => s"'$s'").mkString(",")
+
+    instance { str =>
+      val lower = str.toLowerCase(Locale.ROOT)
+      if (trues.contains(lower)) Right(true)
+      else if (falses.contains(lower)) Right(false)
+      else Left(Error(str, s"invalid boolean value valid values are $truesStr and $falsesStr"))
     }
   }
 
@@ -55,32 +63,41 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
     try {
       Right(to(str))
     } catch {
-      case _: NumberFormatException => Left(Error(str, s"invalid $typeName value"))
+      case _: NumberFormatException => Left(Error(str, s"invalid numeric value, required $typeName"))
     }
   }
 
-  implicit val localDate: CsvFieldDecoder[LocalDate] = instanceDateTimeParse(LocalDate.parse(_))
-  implicit val localDateTime: CsvFieldDecoder[LocalDateTime] = instanceDateTimeParse(LocalDateTime.parse(_))
-  implicit val localTime: CsvFieldDecoder[LocalTime] = instanceDateTimeParse(LocalTime.parse(_))
-  implicit val instant: CsvFieldDecoder[Instant] = instanceDateTimeParse(Instant.parse(_))
-  implicit val offsetDateTime: CsvFieldDecoder[OffsetDateTime] = instanceDateTimeParse(OffsetDateTime.parse(_))
-  implicit val zonedDateTime: CsvFieldDecoder[ZonedDateTime] = instanceDateTimeParse(ZonedDateTime.parse(_))
+  implicit val localDate: CsvFieldDecoder[LocalDate] =
+    instanceDateTimeParse("date", "2021-12-03")(LocalDate.parse(_))
+  implicit val localDateTime: CsvFieldDecoder[LocalDateTime] =
+    instanceDateTimeParse("date time", "2021-12-03T10:15:30")(LocalDateTime.parse(_))
+  implicit val localTime: CsvFieldDecoder[LocalTime] =
+    instanceDateTimeParse("time", "10:15:30")(LocalTime.parse(_))
+  implicit val instant: CsvFieldDecoder[Instant] =
+    instanceDateTimeParse("instant", "2021-12-03T10:15:30.00Z")(Instant.parse(_))
+  implicit val offsetDateTime: CsvFieldDecoder[OffsetDateTime] =
+    instanceDateTimeParse("date time with offset", "2021-12-03T10:15:30+01:00")(OffsetDateTime.parse(_))
+  implicit val zonedDateTime: CsvFieldDecoder[ZonedDateTime] =
+    instanceDateTimeParse("date time with timezone", "2021-12-03T10:15:30+01:00[Europe/Paris]")(ZonedDateTime.parse(_))
 
-  private val DateTimeParseExceptionPrefix = "^Text '.*' could not be parsed: (.*)".r
+  private val DateTimeParseSpecificExceptionPrefix = "^Text '.*' could not be parsed: (.*)".r
+  private val DateTimeParseExceptionPrefix = "^Text '.*' could not be parsed(.*)".r
 
-  def instanceDateTimeParse[T](parse: String => T): CsvFieldDecoder[T] = instance { str =>
-    try {
-      Right(parse(str))
-    } catch {
-      case e: DateTimeParseException =>
-        val reason = e.getMessage match {
-          case DateTimeParseExceptionPrefix(msg) => msg
-          case msg => msg
-        }
+  def instanceDateTimeParse[T](typeName: String, example: String)(parse: String => T): CsvFieldDecoder[T] =
+    instance { str =>
+      try {
+        Right(parse(str))
+      } catch {
+        case e: DateTimeParseException =>
+          val reason = e.getMessage match {
+            case DateTimeParseSpecificExceptionPrefix(msg) => msg
+            case DateTimeParseExceptionPrefix(_) => s"invalid $typeName, expected a value such as $example"
+            case msg => msg
+          }
 
-        Left(Error(str, reason))
+          Left(Error(str, reason))
+      }
     }
-  }
 
   implicit val zoneId: CsvFieldDecoder[ZoneId] = instance { str =>
     try {

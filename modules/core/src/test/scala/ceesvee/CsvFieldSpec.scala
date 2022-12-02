@@ -55,7 +55,10 @@ object CsvFieldSpec extends ZIOSpecDefault {
         test("invalid") {
           check(Gen.string.filter(s => !valid.contains(s))) { s =>
             val result = CsvFieldDecoder[Boolean].decode(s)
-            assertTrue(result == Left(Error(s, "invalid boolean value")))
+            assertTrue(result == Left(Error(
+              s,
+              "invalid boolean value valid values are 't','true','y','yes' and 'f','false','n','no'",
+            )))
           }
         },
       )
@@ -69,7 +72,7 @@ object CsvFieldSpec extends ZIOSpecDefault {
         },
         test("invalid") {
           val result = CsvFieldDecoder[Int].decode("123.45")
-          assertTrue(result == Left(Error("123.45", "invalid int value")))
+          assertTrue(result == Left(Error("123.45", "invalid numeric value, required int")))
         },
       ),
       suite("long")(
@@ -80,7 +83,7 @@ object CsvFieldSpec extends ZIOSpecDefault {
         },
         test("invalid") {
           val result = CsvFieldDecoder[Long].decode("123.45")
-          assertTrue(result == Left(Error("123.45", "invalid long value")))
+          assertTrue(result == Left(Error("123.45", "invalid numeric value, required long")))
         },
       ),
       suite("float")(
@@ -91,7 +94,7 @@ object CsvFieldSpec extends ZIOSpecDefault {
         },
         test("invalid") {
           val result = CsvFieldDecoder[Float].decode("_123.45")
-          assertTrue(result == Left(Error("_123.45", "invalid float value")))
+          assertTrue(result == Left(Error("_123.45", "invalid numeric value, required float")))
         },
       ),
       suite("double")(
@@ -102,7 +105,7 @@ object CsvFieldSpec extends ZIOSpecDefault {
         },
         test("invalid") {
           val result = CsvFieldDecoder[Double].decode("_123.45")
-          assertTrue(result == Left(Error("_123.45", "invalid double value")))
+          assertTrue(result == Left(Error("_123.45", "invalid numeric value, required double")))
         },
       ),
       suite("big decimal")(
@@ -113,7 +116,7 @@ object CsvFieldSpec extends ZIOSpecDefault {
         },
         test("invalid") {
           val result = CsvFieldDecoder[Double].decode("_123.45")
-          assertTrue(result == Left(Error("_123.45", "invalid double value")))
+          assertTrue(result == Left(Error("_123.45", "invalid numeric value, required double")))
         },
       ),
     ),
@@ -170,7 +173,7 @@ object CsvFieldSpec extends ZIOSpecDefault {
           val result = CsvFieldDecoder[Instant].decode("2000-01-01T00:99:00Z")
           assertTrue(result == Left(Error(
             "2000-01-01T00:99:00Z",
-            "Text '2000-01-01T00:99:00Z' could not be parsed at index 0",
+            "invalid instant, expected a value such as 2021-12-03T10:15:30.00Z",
           )))
         },
       ),
@@ -195,7 +198,7 @@ object CsvFieldSpec extends ZIOSpecDefault {
           val result = CsvFieldDecoder[ZonedDateTime].decode("2000-01-01T00:00:00+00:00[TimeZone]")
           assertTrue(result == Left(Error(
             "2000-01-01T00:00:00+00:00[TimeZone]",
-            "Text '2000-01-01T00:00:00+00:00[TimeZone]' could not be parsed, unparsed text found at index 25",
+            "invalid date time with timezone, expected a value such as 2021-12-03T10:15:30+01:00[Europe/Paris]",
           )))
         },
       ),
