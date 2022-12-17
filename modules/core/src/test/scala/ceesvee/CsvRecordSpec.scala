@@ -1,5 +1,6 @@
 package ceesvee
 
+import ceesvee.test.illTyped
 import zio.test.*
 
 import scala.collection.immutable.SortedMap
@@ -97,6 +98,18 @@ object CsvRecordSpec extends ZIOSpecDefault {
         val encoded = CsvRecordEncoder[TestOptionalNestedObject].encode(t)
         val decoded = CsvRecordDecoder[TestOptionalNestedObject].decode(fields)
         assertTrue(encoded == fields) && assertTrue(decoded == Right(t))
+      },
+    ),
+    suite("derive")(
+      test("optional optional field") {
+        illTyped(""" CsvRecordDecoder[Option[Option[String]]] """)
+        illTyped(""" CsvRecordEncoder[Option[Option[String]]] """)
+        assertCompletes
+      },
+      test("optional optional case class") {
+        illTyped(""" CsvRecordDecoder[Option[Option[Test]]] """)
+        illTyped(""" CsvRecordEncoder[Option[Option[Test]]] """)
+        assertCompletes
       },
     ),
   )

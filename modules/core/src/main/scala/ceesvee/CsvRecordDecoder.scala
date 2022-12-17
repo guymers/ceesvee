@@ -1,5 +1,7 @@
 package ceesvee
 
+import ceesvee.util.<:!<
+
 import scala.collection.immutable.SortedMap
 import scala.util.control.NoStackTrace
 
@@ -114,12 +116,17 @@ sealed trait CsvRecordDecoder1 extends CsvRecordDecoder2 { self: CsvRecordDecode
 sealed trait CsvRecordDecoder2 extends CsvRecordDecoder3 { self: CsvRecordDecoder.type =>
 
   implicit def field[T: CsvFieldDecoder]: CsvRecordDecoder[T] = createField[T]
-  implicit def fieldOptional[T: CsvFieldDecoder]: CsvRecordDecoder[Option[T]] = createFieldOptional[T]
+  implicit def fieldOptional[T: CsvFieldDecoder](implicit ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
+    val _ = ev
+    createFieldOptional[T]
+  }
 }
 
 sealed trait CsvRecordDecoder3 extends CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
 
-  implicit def optional[T](implicit D: CsvRecordDecoder[T]): CsvRecordDecoder[Option[T]] = {
+  implicit def optional[T](implicit D: CsvRecordDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
+    val _ = ev
+
     new CsvRecordDecoder[Option[T]] {
       override val numFields = D.numFields
       @SuppressWarnings(Array("org.wartremover.warts.Null"))

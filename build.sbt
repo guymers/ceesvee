@@ -121,6 +121,7 @@ lazy val core = module("core")
       case Some((2, _)) => Seq(
         "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.2",
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+        "com.chuusai" %% "shapeless" % "2.3.10" % Test,
       )
       case _ => Seq.empty
     }),

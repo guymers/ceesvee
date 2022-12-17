@@ -1,5 +1,7 @@
 package ceesvee
 
+import ceesvee.util.<:!<
+
 trait CsvRecordEncoder[A] { self =>
   def numFields: Int
   def encode(a: A): IndexedSeq[String]
@@ -39,7 +41,8 @@ sealed trait CsvRecordEncoder2 extends CsvRecordEncoder3 { self: CsvRecordEncode
 
 sealed trait CsvRecordEncoder3 extends CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
 
-  implicit def optional[T](implicit E: CsvRecordEncoder[T]): CsvRecordEncoder[Option[T]] = {
+  implicit def optional[T](implicit E: CsvRecordEncoder[T], ev: T <:!< Option[?]): CsvRecordEncoder[Option[T]] = {
+    val _ = ev
     val empty = IndexedSeq.fill(E.numFields)("")
 
     new CsvRecordEncoder[Option[T]] {
