@@ -131,9 +131,14 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
+      "dev.zio" %% "zio-interop-cats" % "23.0.0.0" % Test,
     ),
+    libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
+      case _ => Seq.empty
+    }),
   )
-  .dependsOn(core)
+  .dependsOn(core % "compile->compile;test->test")
 
 lazy val zio = module("zio")
   .settings(
@@ -142,7 +147,7 @@ lazy val zio = module("zio")
       "dev.zio" %% "zio-streams" % zioVersion,
     ),
   )
-  .dependsOn(core)
+  .dependsOn(core % "compile->compile;test->test")
 
 lazy val benchmark = proj("benchmark", None)
   .settings(noPublishSettings)
@@ -175,7 +180,7 @@ val TestCsvFiles = Map(
   // https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads
   "uk-property-sales-price-paid-2019.csv" -> (
     "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2019.csv",
-    "94bc07c037e6b60767b762a181d6def40598234b",
+    "0a433381ae42d1d59a047678dd3cb5b3e9ca2a02",
   ),
 )
 

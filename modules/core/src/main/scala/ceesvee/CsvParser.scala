@@ -8,19 +8,59 @@ import scala.collection.mutable
 object CsvParser {
 
   trait Options {
+    def commentPrefix: Option[String]
     def maximumLineLength: Int
+    def skipBlankRows: Boolean
+    def trim: Options.Trim
   }
   object Options {
 
+    val Defaults: Impl = apply(
+      commentPrefix = None,
+      maximumLineLength = 10_000,
+      skipBlankRows = false,
+      trim = Trim.True,
+    )
+
     case class Impl(
+      commentPrefix: Option[String],
       maximumLineLength: Int,
+      skipBlankRows: Boolean,
+      trim: Trim,
     ) extends Options
 
     def apply(
+      commentPrefix: Option[String],
       maximumLineLength: Int,
+      skipBlankRows: Boolean,
+      trim: Trim,
     ): Impl = Impl(
+      commentPrefix = commentPrefix,
       maximumLineLength = maximumLineLength,
+      skipBlankRows = skipBlankRows,
+      trim = trim,
     )
+
+    sealed abstract class Trim {
+      def strip(str: String): String
+    }
+    object Trim {
+      case object True extends Trim {
+        override def strip(str: String) = str.strip
+      }
+
+      case object False extends Trim {
+        override def strip(str: String) = str
+      }
+
+      case object Start extends Trim {
+        override def strip(str: String) = str.stripLeading
+      }
+
+      case object End extends Trim {
+        override def strip(str: String) = str.stripTrailing
+      }
+    }
   }
 
   /**
@@ -36,14 +76,18 @@ object CsvParser {
     options: Options,
   )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
     splitLines(in, options)
-      .filter(str => !ignoreLine(str))
-      .map(parseLine(_))
+      .filter(str => !ignoreLine(str, options))
+      .map(parseLine(_, options))
   }
 
-  def isBlank(line: String): Boolean = line.isEmpty || line.trim.isEmpty
-  def isComment(line: String): Boolean = line.trim.startsWith("#")
+  def ignoreLine(line: String, options: Options): Boolean = {
+    val l = options.trim.strip(line)
 
-  def ignoreLine(line: String): Boolean = isBlank(line) || isComment(line)
+    def isBlank = options.skipBlankRows && l.isEmpty
+    def isComment = options.commentPrefix.filter(_.nonEmpty).exists(l.startsWith(_))
+
+    isBlank || isComment
+  }
 
   /**
    * Splits the given strings into CSV lines by splitting on either '\r\n' and
@@ -102,7 +146,6 @@ object CsvParser {
     )
   }
 
-  // FIXME allow configuration of escape char?
   @SuppressWarnings(Array(
     "org.wartremover.warts.MutableDataStructures",
     "org.wartremover.warts.Var",
@@ -132,13 +175,20 @@ object CsvParser {
           (concat(i): @switch) match {
 
             case '"' =>
-              if (insideQuote && (i + 1) < concat.length && concat(i + 1) == '"') { // ""
+              if (insideQuote && (i + 1) < concat.length && concat(i + 1) == '"') { // escaped quote
                 i += 2
               } else {
                 i += 1
                 if (i < concat.length) {
                   insideQuote = !insideQuote
                 }
+              }
+
+            case '\\' =>
+              if (insideQuote && (i + 1) < concat.length && concat(i + 1) == '"') { // escaped quote
+                i += 2
+              } else {
+                i += 1
               }
 
             case '\n' =>
@@ -181,6 +231,7 @@ object CsvParser {
   ))
   def parseLine[C[_]](
     line: String,
+    options: Options,
   )(implicit f: Factory[String, C[String]]): C[String] = {
     val fields = f.newBuilder
 
@@ -206,13 +257,22 @@ object CsvParser {
               }
 
             case '"' =>
-              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // ""
+              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
                 val _ = slices += (sliceStart -> i)
                 sliceStart = i + 1
                 i += 2
               } else {
                 i += 1
                 insideQuote = !insideQuote
+              }
+
+            case '\\' =>
+              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
+                val _ = slices += (sliceStart -> i)
+                sliceStart = i + 1
+                i += 2
+              } else {
+                i += 1
               }
 
             case _ =>
@@ -224,10 +284,23 @@ object CsvParser {
       }
 
       private def process(): Unit = {
-        val str = (slices += (sliceStart -> i)).foldLeft("") { case (str, (start, end)) =>
-          str concat line.substring(start, end)
+        val sb = new mutable.StringBuilder
+        (slices += (sliceStart -> i)).foreach { case (start, end) =>
+          sb append line.substring(start, end)
         }
-        val _ = fields += str.trim.stripPrefix("\"").stripSuffix("\"")
+        @SuppressWarnings(Array("org.wartremover.warts.ToString"))
+        val str = sb.toString
+
+        val _ = fields += {
+          // always ignore whitespace around a quoted cell
+          val trimmed = Options.Trim.True.strip(str)
+
+          if (trimmed.length >= 2 && trimmed.headOption.contains('"') && trimmed.lastOption.contains('"')) {
+            trimmed.substring(1, trimmed.length - 1)
+          } else {
+            options.trim.strip(str)
+          }
+        }
         slices.clear()
       }
     }

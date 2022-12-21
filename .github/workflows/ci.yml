@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Test
     strategy:
       matrix:
@@ -19,11 +19,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install JDK 8
+      - name: Install JDK 11
         uses: actions/setup-java@v3
         with:
           distribution: zulu
-          java-version: '8'
+          java-version: '11'
           java-package: jdk
 
       - name: Cache SBT

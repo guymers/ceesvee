@@ -26,9 +26,7 @@ import java.nio.file.Paths
 
 object RealWorldCsvSpec extends ZIOSpecDefault {
 
-  private val options = CsvReader.Options(
-    maximumLineLength = 1000,
-  )
+  private val options = CsvReader.Options.Defaults
 
   override val spec = suite("RealWorldCsv")(
     suite("UK Causeway Coast")({
@@ -84,7 +82,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
       assertHeaderTotal("nz-greenhouse-gas-emissions-2019.csv", NZGreenhouseGasEmissions.csvHeader, total)
     }*),
     suite("UK property sales 2019")({
-      val total = 1005528L
+      val total = 1005888L
       assertTotal("uk-property-sales-price-paid-2019.csv", UkPropertySalesPricePaid.decoder, total)
     }*),
   ) @@ TestAspect.timeout(60.seconds)

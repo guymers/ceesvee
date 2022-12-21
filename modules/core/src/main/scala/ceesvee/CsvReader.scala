@@ -6,14 +6,30 @@ object CsvReader {
   trait Options extends CsvParser.Options
   object Options {
 
+    val Defaults: Impl = apply(
+      commentPrefix = CsvParser.Options.Defaults.commentPrefix,
+      maximumLineLength = CsvParser.Options.Defaults.maximumLineLength,
+      skipBlankRows = CsvParser.Options.Defaults.skipBlankRows,
+      trim = CsvParser.Options.Defaults.trim,
+    )
+
     case class Impl(
+      commentPrefix: Option[String],
       maximumLineLength: Int,
+      skipBlankRows: Boolean,
+      trim: CsvParser.Options.Trim,
     ) extends Options
 
     def apply(
+      commentPrefix: Option[String],
       maximumLineLength: Int,
+      skipBlankRows: Boolean,
+      trim: CsvParser.Options.Trim,
     ): Impl = Impl(
+      commentPrefix = commentPrefix,
       maximumLineLength = maximumLineLength,
+      skipBlankRows = skipBlankRows,
+      trim = trim,
     )
   }
 

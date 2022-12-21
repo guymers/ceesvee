@@ -31,13 +31,13 @@ object ZioCsvParser {
     trace: Trace,
   ): ZIO[Scope & R, Either[E, Error], (Chunk[String], ZStream[Any, Either[E, Error], Chunk[String]])] = {
     stream.mapError(Left(_)).peel {
-      extractFirstLine(maximumLineLength = options.maximumLineLength).mapError(Right(_))
+      extractFirstLine(options).mapError(Right(_))
     }.map { case ((headers, state, records), s) =>
       (headers, ZStream.fromChunk(records) ++ (s >>> _parse(state, options).mapError(Right(_))))
     }
   }
 
-  private def extractFirstLine(maximumLineLength: Int)(implicit trace: Trace) = {
+  private def extractFirstLine(options: CsvReader.Options)(implicit trace: Trace) = {
 
     val initial: Chunk[Chunk[String]] = Chunk.empty
 
@@ -56,11 +56,11 @@ object ZioCsvParser {
 
         case Some(strings) =>
           stateRef.get.flatMap { case (state, records) =>
-            if (state.leftover.length > maximumLineLength) {
-              Push.fail(Error.LineTooLong(maximumLineLength), Chunk.empty)
+            if (state.leftover.length > options.maximumLineLength) {
+              Push.fail(Error.LineTooLong(options.maximumLineLength), Chunk.empty)
             } else {
               val (newState, lines) = splitStrings(strings, state)
-              val moreRecords = lines.filter(str => !ignoreLine(str)).map(parseLine[Chunk](_))
+              val moreRecords = lines.filter(str => !ignoreLine(str, options)).map(parseLine[Chunk](_, options))
               val _records = records ++ moreRecords
               done(newState, _records).getOrElse(stateRef.set((newState, _records)) *> Push.more)
             }
@@ -83,15 +83,15 @@ object ZioCsvParser {
    * Turns a stream of strings into a stream of CSV records.
    */
   def parse(
-    options: CsvReader.Options,
+    options: CsvParser.Options,
   )(implicit trace: Trace): ZPipeline[Any, Error, String, Chunk[String]] = {
     _parse(State.initial, options)
   }
 
-  private[ceesvee] def _parse(state: State, options: CsvReader.Options)(implicit trace: Trace) = {
+  private[ceesvee] def _parse(state: State, options: CsvParser.Options)(implicit trace: Trace) = {
     _splitLines(state, options) >>>
-      ZPipeline.filter[String](str => !ignoreLine(str)) >>>
-      ZPipeline.map(parseLine[Chunk](_))
+      ZPipeline.filter[String](str => !ignoreLine(str, options)) >>>
+      ZPipeline.map(parseLine[Chunk](_, options))
   }
 
   /**
@@ -100,14 +100,14 @@ object ZioCsvParser {
    * Delimiters within double-quotes are ignored.
    */
   def splitLines(
-    options: CsvReader.Options,
+    options: CsvParser.Options,
   )(implicit trace: Trace): ZPipeline[Any, Error, String, String] = {
     _splitLines(State.initial, options)
   }
 
   private def _splitLines(
     state: State,
-    options: CsvReader.Options,
+    options: CsvParser.Options,
   )(implicit trace: Trace) = ZPipeline.fromPush {
     Ref.make(state).map { stateRef => (chunk: Option[Chunk[String]]) =>
       chunk match {

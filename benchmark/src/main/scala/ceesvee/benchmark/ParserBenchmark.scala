@@ -27,9 +27,7 @@ class ParserBenchmark {
   }
 
   private val ceesveeOptions = {
-    _root_.ceesvee.CsvParser.Options(
-      maximumLineLength = 10000,
-    )
+    _root_.ceesvee.CsvParser.Options.Defaults
   }
 
   @Benchmark

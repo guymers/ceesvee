@@ -6,7 +6,6 @@ import _root_.fs2.Pull
 import _root_.fs2.RaiseThrowable
 import _root_.fs2.Stream
 import ceesvee.CsvParser
-import ceesvee.CsvReader
 
 import scala.collection.immutable.ArraySeq
 
@@ -24,11 +23,11 @@ object Fs2CsvParser {
    * `maximumLineLength`.
    */
   def parse[F[_]: RaiseThrowable](
-    options: CsvReader.Options,
+    options: CsvParser.Options,
   ): Pipe[F, String, ArraySeq[String]] = {
     _.through(splitLines(options))
-      .filter(str => !ignoreLine(str))
-      .map(parseLine[ArraySeq](_))
+      .filter(str => !ignoreLine(str, options))
+      .map(parseLine[ArraySeq](_, options))
   }
 
   /**
@@ -40,7 +39,7 @@ object Fs2CsvParser {
    * `maximumLineLength`.
    */
   def splitLines[F[_]: RaiseThrowable](
-    options: CsvReader.Options,
+    options: CsvParser.Options,
   ): Pipe[F, String, String] = {
 
     @SuppressWarnings(Array("org.wartremover.warts.Recursion"))

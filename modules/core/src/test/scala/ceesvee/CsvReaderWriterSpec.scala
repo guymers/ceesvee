@@ -10,7 +10,7 @@ object CsvReaderWriterSpec extends ZIOSpecDefault {
     test("to and from a record") {
       check(CsvTestHelper.gen.fields) { fields =>
         val line = CsvWriter.fieldsToLine(fields)
-        val parsed = CsvParser.parseLine[Chunk](line)
+        val parsed = CsvParser.parseLine[Chunk](line, CsvParser.Options.Defaults)
         assertTrue(parsed == fields.toChunk)
       }
     },
