@@ -48,7 +48,7 @@ object CsvReader {
 
     @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
     object decode extends (IndexedSeq[String] => Iterator[Either[CsvHeader.Errors, T]]) {
-      private var decoder: CsvHeader.Decoder[T] = _
+      private var decoder: CsvHeader.Decoder[T] = null
 
       override def apply(fields: IndexedSeq[String]) = {
         if (decoder == null) {

@@ -85,7 +85,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
       val total = 1005888L
       assertTotal("uk-property-sales-price-paid-2019.csv", UkPropertySalesPricePaid.decoder, total)
     }*),
-  ) @@ TestAspect.timeout(60.seconds)
+  ) @@ TestAspect.timeout(60.seconds) @@ TestAspect.timed
 
   private def assertTotal[T](fileName: String, decoder: CsvRecordDecoder[T], total: Long) = {
     val path = Paths.get(getClass.getResource(s"/csv/$fileName").getPath)

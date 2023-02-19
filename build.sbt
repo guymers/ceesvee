@@ -1,7 +1,7 @@
 // format: off
 
-val fs2Version = "3.5.0"
-val zioVersion = "2.0.6"
+val fs2Version = "3.6.1"
+val zioVersion = "2.0.9"
 
 val Scala213 = "2.13.10"
 val Scala3 = "3.2.2"
@@ -38,7 +38,10 @@ lazy val commonSettings = Seq(
       "-Xsource:3",
     )
     case Some((3, _)) => Seq(
+      "-explain",
       "-explain-types",
+      "-no-indent",
+      "-source:future",
     )
     case _ => Seq.empty
   }),

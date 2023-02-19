@@ -36,7 +36,7 @@ sealed trait CsvRecordEncoder1 extends CsvRecordEncoder2 { self: CsvRecordEncode
 
 sealed trait CsvRecordEncoder2 extends CsvRecordEncoder3 { self: CsvRecordEncoder.type =>
 
-  implicit def field[T: CsvFieldEncoder]: CsvRecordEncoder[T] = createField[T]
+  implicit def field[T](implicit E: CsvFieldEncoder[T]): CsvRecordEncoder[T] = createField[T]
 }
 
 sealed trait CsvRecordEncoder3 extends CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>

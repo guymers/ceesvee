@@ -115,8 +115,8 @@ sealed trait CsvRecordDecoder1 extends CsvRecordDecoder2 { self: CsvRecordDecode
 
 sealed trait CsvRecordDecoder2 extends CsvRecordDecoder3 { self: CsvRecordDecoder.type =>
 
-  implicit def field[T: CsvFieldDecoder]: CsvRecordDecoder[T] = createField[T]
-  implicit def fieldOptional[T: CsvFieldDecoder](implicit ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
+  implicit def field[T](implicit D: CsvFieldDecoder[T]): CsvRecordDecoder[T] = createField[T]
+  implicit def fieldOptional[T](implicit D: CsvFieldDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
     val _ = ev
     createFieldOptional[T]
   }

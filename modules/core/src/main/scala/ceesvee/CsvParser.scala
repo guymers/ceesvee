@@ -164,7 +164,7 @@ object CsvParser {
       val string = it.next()
       if (string.nonEmpty) {
 
-        val concat = leftover concat string
+        val concat = leftover.concat(string)
 
         // assume we have already processed `leftover`,
         // reprocess the last character in case it was a '\', '"' or '\r'

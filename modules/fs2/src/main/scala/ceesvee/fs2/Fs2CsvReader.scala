@@ -68,9 +68,9 @@ object Fs2CsvReader {
    * Raises a [[ceesvee.CsvParser.Error.LineTooLong]] if a line is longer than
    * `maximumLineLength`.
    */
-  def decode[F[_]: RaiseThrowable, T](
+  def decode[F[_], T](
     options: CsvReader.Options,
-  )(implicit D: CsvRecordDecoder[T]): Pipe[F, String, Either[CsvRecordDecoder.Errors, T]] = {
+  )(implicit F: RaiseThrowable[F], D: CsvRecordDecoder[T]): Pipe[F, String, Either[CsvRecordDecoder.Errors, T]] = {
     _.through(parse(options)).map(D.decode(_))
   }
 }

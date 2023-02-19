@@ -20,8 +20,8 @@ object CsvTestHelper {
     private val whitespace = Gen.stringBounded(1, 5)(oneOfChar(NonEmptyChunk(' ', '\t')))
 
     def withLeadingOrTrailingWhitespace(str: String) = Gen.oneOf(
-      whitespace.map(_ concat str),
-      whitespace.map(str concat _),
+      whitespace.map(_.concat(str)),
+      whitespace.map(str.concat(_)),
       (whitespace <*> whitespace).map { case (prefix, suffix) => s"$prefix$str$suffix" },
     )
 

@@ -6,7 +6,7 @@ import scala.deriving.Mirror
 
 trait CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
 
-  inline def summonAll[T <: Tuple]: List[CsvRecordEncoder[_]] = {
+  inline def summonAll[T <: Tuple]: List[CsvRecordEncoder[?]] = {
     inline erasedValue[T] match {
       case _: EmptyTuple => Nil
       case _: (t *: ts) => summonInline[CsvRecordEncoder[t]] :: summonAll[ts]
@@ -18,17 +18,23 @@ trait CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
 
     new CsvRecordEncoder[A] {
       override val numFields = instances.foldLeft(0)(_ + _.numFields)
-      override def encode(a: A) = {
-        val builder = IndexedSeq.newBuilder[String]
-        builder.sizeHint(numFields)
-
-        instances.zipWithIndex.foreach { case (p: CsvRecordEncoder[a], index) =>
-          val v = a.asInstanceOf[Product].productElement(index).asInstanceOf[a]
-          builder.addAll(p.encode(v))
-        }
-
-        builder.result()
-      }
+      override def encode(a: A) = encodeUsingInstances(instances, numFields)(a)
     }
+  }
+
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.AsInstanceOf",
+    "org.wartremover.warts.MutableDataStructures",
+  ))
+  private def encodeUsingInstances[A](instances: List[CsvRecordEncoder[?]], numFields: Int)(a: A) = {
+    val builder = IndexedSeq.newBuilder[String]
+    builder.sizeHint(numFields)
+
+    instances.zipWithIndex.foreach { case (p: CsvRecordEncoder[a], index) =>
+      val v = a.asInstanceOf[Product].productElement(index).asInstanceOf[a]
+      builder.addAll(p.encode(v))
+    }
+
+    builder.result()
   }
 }
