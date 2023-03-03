@@ -1,5 +1,6 @@
 package ceesvee
 
+import cats.syntax.apply.*
 import ceesvee.test.illTyped
 import zio.test.*
 
@@ -12,8 +13,29 @@ object CsvRecordSpec extends ZIOSpecDefault {
       val t = Test("a str", None, 123, 123.45f, true, Some(5))
       val _ = Test.decoder
       val encoded = CsvRecordEncoder[Test].encode(t)
-      val decoded = CsvRecordDecoder[Test].decode(encoded.toIndexedSeq)
+      val decoded = CsvRecordDecoder[Test].decode(encoded)
       assertTrue(decoded == Right(t))
+    },
+    test("compose") {
+      val t = Test("a str", None, 123, 123.45f, true, Some(5))
+      val tce = TestCustomError("another string", 456)
+      val fields = Vector("a str", "", "123", "123.45", "true", "5", "another string", "456")
+
+      val encoder = (Test.encoder, TestCustomError.encoder).tupled
+      val encoded = encoder.encode((t, tce))
+
+      val decoder = (Test.decoder, TestCustomError.decoder).tupled
+      val decoded = decoder.decode(encoded)
+
+      val decoderT = Test.decoder <* TestCustomError.decoder
+      val decodedT = decoderT.decode(encoded)
+      val decoderTCE = Test.decoder *> TestCustomError.decoder
+      val decodedTCE = decoderTCE.decode(encoded)
+
+      assertTrue(encoded == fields) &&
+      assertTrue(decoded == Right((t, tce))) &&
+      assertTrue(decodedT == Right(t)) &&
+      assertTrue(decodedTCE == Right(tce))
     },
     test("not enough fields") {
       val fields = Vector("a str", "", "123", "123.45", "true")
@@ -124,6 +146,7 @@ object TestCustomError {
     if (v.int == 0) Left("int cannot be 0")
     else Right(v)
   }
+  implicit val encoder: CsvRecordEncoder[TestCustomError] = CsvRecordEncoder.derived
 }
 
 case class TestCustomErrorNested(

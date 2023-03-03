@@ -23,6 +23,24 @@ trait CsvRecordDecoder[A] { self =>
       }
     }
   }
+
+  final def ap[B](ff: CsvRecordDecoder[A => B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
+    override val numFields = ff.numFields + self.numFields
+    override def decode(fields: IndexedSeq[String]) = for {
+      aToB <- ff.decode(fields.take(ff.numFields))
+      a <- self.decode(fields.drop(ff.numFields))
+    } yield aToB(a)
+  }
+
+  final def map2[B, Z](fb: CsvRecordDecoder[B])(f: (A, B) => Z): CsvRecordDecoder[Z] = new CsvRecordDecoder[Z] {
+    override val numFields = self.numFields + fb.numFields
+    override def decode(fields: IndexedSeq[String]) = for {
+      a <- self.decode(fields.take(self.numFields))
+      b <- fb.decode(fields.drop(self.numFields))
+    } yield f(a, b)
+  }
+
+  final def product[B](fb: CsvRecordDecoder[B]): CsvRecordDecoder[(A, B)] = map2(fb)({ case t @ (_, _) => t })
 }
 object CsvRecordDecoder extends CsvRecordDecoder1 {
 
@@ -122,7 +140,7 @@ sealed trait CsvRecordDecoder2 extends CsvRecordDecoder3 { self: CsvRecordDecode
   }
 }
 
-sealed trait CsvRecordDecoder3 extends CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
+sealed trait CsvRecordDecoder3 extends CsvRecordDecoder4 { self: CsvRecordDecoder.type =>
 
   implicit def optional[T](implicit D: CsvRecordDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
     val _ = ev
@@ -139,4 +157,26 @@ sealed trait CsvRecordDecoder3 extends CsvRecordDecoderDeriveScalaVersion { self
       }
     }
   }
+}
+
+sealed trait CsvRecordDecoder4 extends CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
+
+  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+  implicit def ApplyCsvRecordDecoder[F[_[_]]](implicit env: CatsApply[F]): F[CsvRecordDecoder] = {
+    val _ = env
+
+    new cats.Apply[CsvRecordDecoder] {
+      override def map[A, B](fa: CsvRecordDecoder[A])(f: A => B) = fa.map(f)
+      override def ap[A, B](ff: CsvRecordDecoder[A => B])(fa: CsvRecordDecoder[A]) = fa.ap(ff)
+      override def map2[A, B, Z](fa: CsvRecordDecoder[A], fb: CsvRecordDecoder[B])(f: (A, B) => Z) = fa.map2(fb)(f)
+      override def product[A, B](fa: CsvRecordDecoder[A], fb: CsvRecordDecoder[B]) = fa.product(fb)
+    }.asInstanceOf[F[CsvRecordDecoder]]
+  }
+}
+
+// https://blog.7mind.io/no-more-orphans.html
+final abstract class CatsApply[F[_[_]]]
+object CatsApply {
+  @SuppressWarnings(Array("org.wartremover.warts.Null"))
+  @inline implicit final def get: CatsApply[cats.Apply] = null
 }
