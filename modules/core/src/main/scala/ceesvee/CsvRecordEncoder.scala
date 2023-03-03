@@ -10,6 +10,11 @@ trait CsvRecordEncoder[A] { self =>
     override val numFields = self.numFields
     override def encode(b: B) = self.encode(f(b))
   }
+
+  final def product[B](fb: CsvRecordEncoder[B]): CsvRecordEncoder[(A, B)] = new CsvRecordEncoder[(A, B)] {
+    override val numFields = self.numFields + fb.numFields
+    override def encode(t: (A, B)) = self.encode(t._1) ++ fb.encode(t._2)
+  }
 }
 object CsvRecordEncoder extends CsvRecordEncoder1 {
 
@@ -39,7 +44,7 @@ sealed trait CsvRecordEncoder2 extends CsvRecordEncoder3 { self: CsvRecordEncode
   implicit def field[T](implicit E: CsvFieldEncoder[T]): CsvRecordEncoder[T] = createField[T]
 }
 
-sealed trait CsvRecordEncoder3 extends CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
+sealed trait CsvRecordEncoder3 extends CsvRecordEncoder4 { self: CsvRecordEncoder.type =>
 
   implicit def optional[T](implicit E: CsvRecordEncoder[T], ev: T <:!< Option[?]): CsvRecordEncoder[Option[T]] = {
     val _ = ev
@@ -50,4 +55,26 @@ sealed trait CsvRecordEncoder3 extends CsvRecordEncoderDeriveScalaVersion { self
       override def encode(t: Option[T]) = t.fold(empty)(E.encode(_))
     }
   }
+}
+
+sealed trait CsvRecordEncoder4 extends CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
+
+  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+  implicit def ContravariantSemigroupalCsvRecordEncoder[F[_[_]]](implicit
+    env: CatsContravariantSemigroupal[F],
+  ): F[CsvRecordEncoder] = {
+    val _ = env
+
+    new cats.ContravariantSemigroupal[CsvRecordEncoder] {
+      override def contramap[A, B](fa: CsvRecordEncoder[A])(f: B => A) = fa.contramap(f)
+      override def product[A, B](fa: CsvRecordEncoder[A], fb: CsvRecordEncoder[B]) = fa.product(fb)
+    }.asInstanceOf[F[CsvRecordEncoder]]
+  }
+}
+
+// https://blog.7mind.io/no-more-orphans.html
+final abstract class CatsContravariantSemigroupal[F[_[_]]]
+object CatsContravariantSemigroupal {
+  @SuppressWarnings(Array("org.wartremover.warts.Null"))
+  @inline implicit final def get: CatsContravariantSemigroupal[cats.ContravariantSemigroupal] = null
 }
