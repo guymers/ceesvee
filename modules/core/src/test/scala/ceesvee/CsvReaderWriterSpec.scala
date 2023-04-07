@@ -2,7 +2,9 @@ package ceesvee
 
 import ceesvee.test.CsvTestHelper
 import zio.Chunk
-import zio.test.*
+import zio.test.ZIOSpecDefault
+import zio.test.assertTrue
+import zio.test.check
 
 object CsvReaderWriterSpec extends ZIOSpecDefault {
 

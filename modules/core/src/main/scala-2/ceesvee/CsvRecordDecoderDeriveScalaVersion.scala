@@ -20,7 +20,7 @@ trait CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
       val _ = cc.parameters.foldLeft((0, 0)) { case ((index, offset), p) =>
         val num = p.typeclass.numFields
         p.typeclass.decode(fields.slice(offset, offset + num)) match {
-          case Left(error) => error.errors.foreach { case (k, v) => errs.addOne((k + offset, v)) }
+          case Left(error) => error.errors.foreachEntry { case (k, v) => errs.addOne((k + offset, v)) }
           case Right(v) => values.update(index, v)
         }
         (index + 1, offset + num)

@@ -31,11 +31,11 @@ jobs:
         with:
           extraKey: v1
 
-      - name: Compile
-        run: sbt "++${{ matrix.scala }} compile"
-
       - name: Lint
-        run: sbt "++${{ matrix.scala }} scalafmtCheckAll"
+        run: sbt --client "++${{ matrix.scala }} scalafmtCheckAll"
+
+      - name: Compile
+        run: sbt --client "++${{ matrix.scala }} compile"
 
       - name: Test
-        run: sbt "++${{ matrix.scala }} test"
+        run: sbt --client "++${{ matrix.scala }} test"

@@ -2,7 +2,9 @@ package ceesvee
 
 import cats.syntax.apply.*
 import ceesvee.test.illTyped
-import zio.test.*
+import zio.test.ZIOSpecDefault
+import zio.test.assertCompletes
+import zio.test.assertTrue
 
 import scala.collection.immutable.SortedMap
 

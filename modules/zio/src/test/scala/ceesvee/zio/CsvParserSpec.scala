@@ -2,7 +2,7 @@ package ceesvee.zio
 
 import ceesvee.CsvParser
 import zio.stream.ZStream
-import zio.test.*
+import zio.test.ZIOSpecDefault
 
 object CsvParserSpec extends ZIOSpecDefault with ceesvee.CsvParserParserSuite {
 
