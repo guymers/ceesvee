@@ -2,7 +2,8 @@ package ceesvee
 
 import zio.Chunk
 import zio.ZIO
-import zio.test.*
+import zio.test.ZIOSpecDefault
+import zio.test.assertTrue
 
 object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
 
@@ -92,7 +93,7 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
   }
 }
 
-trait CsvParserParserSuite {
+trait CsvParserParserSuite { self: ZIOSpecDefault =>
 
   protected def parse(
     lines: Iterable[String],

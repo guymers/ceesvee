@@ -2,7 +2,7 @@
 
 val catsVersion = "2.9.0"
 val fs2Version = "3.6.1"
-val zioVersion = "2.0.9"
+val zioVersion = "2.0.11"
 
 val Scala213 = "2.13.10"
 val Scala3 = "3.2.2"
@@ -88,10 +88,6 @@ def filterScalacConsoleOpts(options: Seq[String]) = {
   }
 }
 
-lazy val noPublishSettings = Seq(
-  publish / skip := true,
-)
-
 lazy val zioTestSettings = Seq(
   libraryDependencies ++= Seq(
     "dev.zio" %% "zio-test" % zioVersion % Test,
@@ -112,7 +108,7 @@ def module(name: String) = proj(name, Some("modules"))
 
 lazy val ceesvee = project.in(file("."))
   .settings(commonSettings)
-  .settings(noPublishSettings)
+  .settings(publish / skip := true)
   .aggregate(
     core, fs2, zio,
     benchmark,
@@ -140,7 +136,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.0.0.2" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.0.0.3" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
@@ -159,7 +155,7 @@ lazy val zio = module("zio")
   .dependsOn(core % "compile->compile;test->test")
 
 lazy val benchmark = proj("benchmark", None)
-  .settings(noPublishSettings)
+  .settings(publish / skip := true)
   .settings(
     libraryDependencies ++= Seq(
       "com.univocity" % "univocity-parsers" % "2.9.1",
@@ -222,7 +218,7 @@ def downloadTestCsvFile(log: Logger, file: File): Unit = {
 def _testCsvFilesDir(base: File) = base / "target" / "scala" / "resource_managed" / "test"
 
 lazy val tests = proj("tests", None)
-  .settings(noPublishSettings)
+  .settings(publish / skip := true)
   .settings(zioTestSettings)
   .settings(
     libraryDependencies ++= Seq(

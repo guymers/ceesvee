@@ -4,10 +4,10 @@ import ceesvee.CsvParser
 import fs2.Stream
 import zio.Chunk
 import zio.Task
-import zio.interop.catz.*
-import zio.test.*
+import zio.test.ZIOSpecDefault
 
 object CsvParserSpec extends ZIOSpecDefault with ceesvee.CsvParserParserSuite {
+  import zio.interop.catz.asyncInstance
 
   override val spec = suite("CsvParser")(
     parserSuite,

@@ -1,6 +1,10 @@
 package ceesvee
 
-import zio.test.*
+import zio.test.Gen
+import zio.test.ZIOSpecDefault
+import zio.test.assertCompletes
+import zio.test.assertTrue
+import zio.test.check
 
 import java.net.URI
 import java.time.Instant

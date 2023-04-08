@@ -1,6 +1,7 @@
 package ceesvee
 
-import zio.test.*
+import zio.test.ZIOSpecDefault
+import zio.test.assertTrue
 
 import scala.collection.immutable.SortedMap
 

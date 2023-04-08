@@ -14,7 +14,9 @@ import zio.ZIO
 import zio.durationInt
 import zio.stream.ZPipeline
 import zio.stream.ZStream
-import zio.test.*
+import zio.test.TestAspect
+import zio.test.ZIOSpecDefault
+import zio.test.assertTrue
 
 import java.io.InputStream
 import java.net.URI

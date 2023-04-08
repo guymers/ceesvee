@@ -1,6 +1,7 @@
 package ceesvee
 
-import zio.test.*
+import zio.test.ZIOSpecDefault
+import zio.test.assertTrue
 
 object CsvWriterSpec extends ZIOSpecDefault {
   import CsvWriter.quoteField
