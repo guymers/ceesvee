@@ -136,7 +136,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.0.0.2" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.0.0.3" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
