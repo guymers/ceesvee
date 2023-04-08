@@ -35,7 +35,7 @@ jobs:
         run: sbt --client "++${{ matrix.scala }} scalafmtCheckAll"
 
       - name: Compile
-        run: sbt --client "++${{ matrix.scala }} compile"
+        run: sbt --client "++${{ matrix.scala }} Test/compile"
 
       - name: Test
         run: sbt --client "++${{ matrix.scala }} test"
