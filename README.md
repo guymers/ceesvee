@@ -5,7 +5,6 @@ A CSV library designed for use with steams. Can be used with `Iterator`, `fs2.St
 Supports the CSV format described by [Model for Tabular Data and Metadata on the Web](https://www.w3.org/TR/2015/REC-tabular-data-model-20151217/#ebnf):
 - a new line can be `\n` or `\r\n`
 - a double quote is escaped by a double quote 
-- leading and trailing whitespace in a field is ignored unless it is quoted
 
 #### Example
 
@@ -32,8 +31,8 @@ val result: Either[CsvHeader.MissingHeaders, Iterator[Either[CsvRecordDecoder.Er
 
 `fs2`
 ```scala
-val stream: fs2.Stream[F[_], String]
-val result: fs2.Stream[F[_], Either[CsvRecordDecoder.Error, Test]] = stream.through {
+val stream: fs2.Stream[F[?], String]
+val result: fs2.Stream[F[?], Either[CsvRecordDecoder.Error, Test]] = stream.through {
   Fs2CsvParser.decodeWithHeader(Test.csvHeader, options)
 }
 ```
@@ -41,8 +40,8 @@ val result: fs2.Stream[F[_], Either[CsvRecordDecoder.Error, Test]] = stream.thro
 `zio`
 ```scala
 val stream: zio.stream.ZStream[R, E, String]
-val result: zio.ZManaged[
-  r,
+val result: zio.ZIO[
+  Scope & R,
   Either[Either[E, CsvParser.Error], CsvHeader.MissingHeaders],
   zio.stream.ZStream[E, Either[E, CsvParser.Error], Either[CsvRecordDecoder.Error, Test]]
 ] = ZioCsvParser.decodeWithHeader(stream, Test.csvHeader, options)
