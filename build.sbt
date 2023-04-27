@@ -2,7 +2,7 @@
 
 val catsVersion = "2.9.0"
 val fs2Version = "3.6.1"
-val zioVersion = "2.0.11"
+val zioVersion = "2.0.13"
 
 val Scala213 = "2.13.10"
 val Scala3 = "3.2.2"
@@ -23,7 +23,7 @@ inThisBuild(Seq(
 lazy val commonSettings = Seq(
   scalaVersion := Scala213,
   crossScalaVersions := Seq(Scala213, Scala3),
-  versionScheme := Some("early-semver"),
+  versionScheme := Some("pvp"),
 
   scalacOptions ++= Seq(
     "-deprecation",
@@ -136,7 +136,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.0.0.3" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.0.0.4" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
