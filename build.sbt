@@ -1,11 +1,11 @@
 // format: off
 
 val catsVersion = "2.9.0"
-val fs2Version = "3.6.1"
-val zioVersion = "2.0.13"
+val fs2Version = "3.7.0"
+val zioVersion = "2.0.15"
 
-val Scala213 = "2.13.10"
-val Scala3 = "3.2.2"
+val Scala213 = "2.13.11"
+val Scala3 = "3.3.0"
 
 inThisBuild(Seq(
   organization := "io.github.guymers",
@@ -61,7 +61,10 @@ lazy val commonSettings = Seq(
 
       "-Xlint:_,-byname-implicit", // exclude byname-implicit https://github.com/scala/bug/issues/12072
     )
-    case _ => Seq.empty
+    case _ => Seq(
+      "-Wunused:all",
+      "-Wvalue-discard",
+    )
   }),
 
   Compile / console / scalacOptions ~= filterScalacConsoleOpts,
@@ -136,7 +139,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.0.0.4" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.0.0.6" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
@@ -190,7 +193,7 @@ val TestCsvFiles = Map(
 )
 
 def downloadTestCsvFile(log: Logger, file: File): Unit = {
-  import scala.sys.process._
+  import scala.sys.process.*
 
   val (_url, _hash) = TestCsvFiles(file.name)
 

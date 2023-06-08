@@ -89,6 +89,7 @@ object CsvHeader {
         }
       } else {
         new Decoder[T] {
+          @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
           override def withHeaders(fields: IndexedSeq[String]) = {
             val fieldsLength = fields.length
 
@@ -96,6 +97,7 @@ object CsvHeader {
               if (fieldIndex < fieldsLength) Some((header, fields(fieldIndex))) else None
             }.toMap
           }
+          @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
           override def decode(fields: IndexedSeq[String]) = {
             val fieldsLength = fields.length
 
