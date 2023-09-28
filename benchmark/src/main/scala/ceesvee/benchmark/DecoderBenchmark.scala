@@ -4,6 +4,8 @@ import ceesvee.CsvRecordDecoder
 import ceesvee.benchmark.data.TestDecodeJavaIndex
 import ceesvee.benchmark.data.TestDecodeScala
 import com.univocity.parsers.common.processor.BeanListProcessor
+import com.univocity.parsers.common.record.Record
+import com.univocity.parsers.common.record.RecordMetaData
 import org.openjdk.jmh.annotations.*
 
 import java.util.concurrent.TimeUnit
@@ -46,8 +48,8 @@ class DecoderBenchmark {
       override def stop(): Unit = ()
       override val isStopped = false
       override val errorContentLength = 0
-      override def toRecord(row: Array[String]) = null
-      override def recordMetaData() = null
+      override def toRecord(row: Array[String]): Record = null
+      override def recordMetaData(): RecordMetaData = null
     }
   }
 

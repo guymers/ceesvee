@@ -57,7 +57,7 @@ object Fs2CsvParser {
           if (newState.leftover.length > options.maximumLineLength) {
             Pull.raiseError[F](Error.LineTooLong(options.maximumLineLength))
           } else {
-            Pull.output(Chunk.indexedSeq(lines)) >> go(stream, newState, first = false)
+            Pull.output(Chunk.from(lines)) >> go(stream, newState, first = false)
           }
       }
 

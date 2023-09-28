@@ -1,11 +1,11 @@
 // format: off
 
-val catsVersion = "2.9.0"
-val fs2Version = "3.7.0"
-val zioVersion = "2.0.15"
+val catsVersion = "2.10.0"
+val fs2Version = "3.9.2"
+val zioVersion = "2.0.18"
 
-val Scala213 = "2.13.11"
-val Scala3 = "3.3.0"
+val Scala213 = "2.13.12"
+val Scala3 = "3.3.1"
 
 inThisBuild(Seq(
   organization := "io.github.guymers",
@@ -29,6 +29,7 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-encoding", "UTF-8",
     "-feature",
+    "-release", "11",
     "-unchecked",
   ),
   scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
@@ -38,16 +39,15 @@ lazy val commonSettings = Seq(
       "-language:higherKinds",
       "-Xsource:3",
     )
-    case Some((3, _)) => Seq(
+    case _ => Seq(
       "-explain",
       "-explain-types",
       "-no-indent",
       "-source:future",
     )
-    case _ => Seq.empty
   }),
   scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, minor)) if minor >= 13 => Seq(
+    case Some((2, _)) => Seq(
       "-Vimplicits",
       "-Vtype-diffs",
       "-Wdead-code",
@@ -62,9 +62,14 @@ lazy val commonSettings = Seq(
       "-Xlint:_,-byname-implicit", // exclude byname-implicit https://github.com/scala/bug/issues/12072
     )
     case _ => Seq(
+      "-Wnonunit-statement",
       "-Wunused:all",
       "-Wvalue-discard",
     )
+  }),
+  Test / scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, _)) => Seq("-Wconf:cat=scala3-migration:silent")
+    case _ => Seq.empty
   }),
 
   Compile / console / scalacOptions ~= filterScalacConsoleOpts,
@@ -139,7 +144,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.0.0.6" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.0.0.8" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
