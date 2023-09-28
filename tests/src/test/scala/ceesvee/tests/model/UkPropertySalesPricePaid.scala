@@ -5,7 +5,6 @@ import ceesvee.CsvRecordDecoder
 
 import java.time.LocalDate
 import java.util.UUID
-import scala.annotation.nowarn
 
 case class UkPropertySalesPricePaid(
   identifier: UkPropertySalesPricePaid.Identifier,
@@ -106,15 +105,12 @@ object UkPropertySalesPricePaid {
     implicit val decoder: CsvRecordDecoder[Address] = CsvRecordDecoder.derived
   }
 
-  implicit val decoder: CsvRecordDecoder[UkPropertySalesPricePaid] = {
-    @nowarn("cat=unused-locals")
-    implicit val decoderLocalDate: CsvFieldDecoder[LocalDate] = {
-      CsvFieldDecoder.instance { str =>
-        val s = str.take(10) // "2019-01-14 00:00"
-        CsvFieldDecoder.localDate.decode(s)
-      }
+  implicit val decoderLocalDate: CsvFieldDecoder[LocalDate] = {
+    CsvFieldDecoder.instance { str =>
+      val s = str.take(10) // "2019-01-14 00:00"
+      CsvFieldDecoder.localDate.decode(s)
     }
-
-    CsvRecordDecoder.derived
   }
+
+  implicit val decoder: CsvRecordDecoder[UkPropertySalesPricePaid] = CsvRecordDecoder.derived
 }

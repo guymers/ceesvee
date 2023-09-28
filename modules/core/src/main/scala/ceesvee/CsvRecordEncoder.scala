@@ -23,7 +23,7 @@ object CsvRecordEncoder extends CsvRecordEncoder1 {
   private[ceesvee] def createField[T](implicit E: => CsvFieldEncoder[T]): CsvRecordEncoder[T] = {
     new CsvRecordEncoder[T] {
       override val numFields = 1
-      override def encode(t: T) = Vector(E.encode(t))
+      override def encode(t: T) = IndexedSeq(E.encode(t))
     }
   }
 }
