@@ -20,7 +20,7 @@ object CsvRecordEncoderLaws {
 
   case class A(v: Boolean)
   object A {
-    val instance = A(true)
+    val instance = A(v = true)
 
     implicit val encoder: CsvRecordEncoder[A] = CsvRecordEncoder.derived
   }
