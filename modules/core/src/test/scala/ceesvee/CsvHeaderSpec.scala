@@ -23,7 +23,7 @@ object CsvHeaderSpec extends ZIOSpecDefault {
         val map = decoder.withHeaders(row)
         val result = decoder.decode(row)
         assertTrue(map == Map("a" -> "str", "b" -> "1", "c" -> "true")) &&
-        assertTrue(result == Right(Test("str", 1, true)))
+        assertTrue(result == Right(Test("str", 1, c = true)))
       } ::
       test("invalid row") {
         val row = Vector("", "str", "", "invalid", "", "true", "")

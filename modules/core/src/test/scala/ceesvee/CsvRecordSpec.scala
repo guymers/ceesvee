@@ -12,14 +12,14 @@ object CsvRecordSpec extends ZIOSpecDefault {
 
   override val spec = suite("CsvRecord")(
     test("valid") {
-      val t = Test("a str", None, 123, 123.45f, true, Some(5))
+      val t = Test("a str", None, 123, 123.45f, bool = true, Some(5))
       val _ = Test.decoder
       val encoded = CsvRecordEncoder[Test].encode(t)
       val decoded = CsvRecordDecoder[Test].decode(encoded)
       assertTrue(decoded == Right(t))
     },
     test("compose") {
-      val t = Test("a str", None, 123, 123.45f, true, Some(5))
+      val t = Test("a str", None, 123, 123.45f, bool = true, Some(5))
       val tce = TestCustomError("another string", 456)
       val fields = Vector("a str", "", "123", "123.45", "true", "5", "another string", "456")
 
@@ -114,7 +114,7 @@ object CsvRecordSpec extends ZIOSpecDefault {
       test("present") {
         val t = TestOptionalNestedObject(
           str = "a str",
-          nested = Some(Test("a str", None, 123, 123.45f, true, Some(5))),
+          nested = Some(Test("a str", None, 123, 123.45f, bool = true, Some(5))),
           int = 1,
           intOpt = None,
         )

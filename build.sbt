@@ -1,11 +1,11 @@
 // format: off
 
 val catsVersion = "2.10.0"
-val fs2Version = "3.9.2"
-val zioVersion = "2.0.18"
+val fs2Version = "3.10.2"
+val zioVersion = "2.0.21"
 
-val Scala213 = "2.13.12"
-val Scala3 = "3.3.1"
+val Scala213 = "2.13.13"
+val Scala3 = "3.3.3"
 
 inThisBuild(Seq(
   organization := "io.github.guymers",
@@ -132,7 +132,7 @@ lazy val core = module("core")
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(
-        "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.3",
+        "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.7",
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
         "com.chuusai" %% "shapeless" % "2.3.10" % Test,
       )
@@ -144,10 +144,10 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.0.0.8" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.1.0.1" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full))
+      case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.3" cross CrossVersion.full))
       case _ => Seq.empty
     }),
   )
