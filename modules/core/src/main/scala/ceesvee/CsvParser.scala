@@ -96,15 +96,17 @@ object CsvParser {
    * Both '"' and '\' are valid escapes for nested double quotes.
    */
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.MutableDataStructures",
+    "org.wartremover.warts.Throw",
+    "org.wartremover.warts.Var",
+  ))
   def splitLines(in: Iterator[String], options: Options): Iterator[String] = new Iterator[String] {
-    @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))
     private val toOutput = mutable.Queue.empty[String]
-    @SuppressWarnings(Array("org.wartremover.warts.Var"))
     private var state = State.initial
 
     override def hasNext: Boolean = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
 
-    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     @tailrec override def next(): String = {
       if (toOutput.nonEmpty) {
         toOutput.dequeue()

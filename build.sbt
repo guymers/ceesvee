@@ -1,11 +1,11 @@
 // format: off
 
-val catsVersion = "2.10.0"
-val fs2Version = "3.10.2"
-val zioVersion = "2.0.21"
+val catsVersion = "2.13.0"
+val fs2Version = "3.11.0"
+val zioVersion = "2.1.6"
 
-val Scala213 = "2.13.13"
-val Scala3 = "3.3.3"
+val Scala213 = "2.13.16"
+val Scala3 = "3.3.4"
 
 inThisBuild(Seq(
   organization := "io.github.guymers",
@@ -128,13 +128,13 @@ lazy val core = module("core")
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % catsVersion % Optional,
       "org.typelevel" %% "cats-laws" % catsVersion % Test,
-      "org.typelevel" %% "discipline-munit" % "1.0.9" % Test,
+      "org.typelevel" %% "discipline-munit" % "2.0.0" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(
-        "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.7",
+        "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.10",
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        "com.chuusai" %% "shapeless" % "2.3.10" % Test,
+        "com.chuusai" %% "shapeless" % "2.3.12" % Test,
       )
       case _ => Seq.empty
     }),
@@ -144,7 +144,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.1.0.1" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.1.0.2" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.3" cross CrossVersion.full))
@@ -167,7 +167,7 @@ lazy val benchmark = proj("benchmark", None)
   .settings(
     libraryDependencies ++= Seq(
       "com.univocity" % "univocity-parsers" % "2.9.1",
-      "com.github.tototoshi" %% "scala-csv" % "1.3.10",
+      "com.github.tototoshi" %% "scala-csv" % "2.0.0",
     ),
   )
   .dependsOn(core)
@@ -193,7 +193,7 @@ val TestCsvFiles = Map(
   // https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads
   "uk-property-sales-price-paid-2019.csv" -> (
     "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2019.csv",
-    "0a433381ae42d1d59a047678dd3cb5b3e9ca2a02",
+    "f0c8da0dad28e849b78e9cd8f17927d83e0bb14c",
   ),
 )
 

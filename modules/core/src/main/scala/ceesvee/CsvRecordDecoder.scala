@@ -11,13 +11,14 @@ trait CsvRecordDecoder[A] { self =>
 
   final def map[B](f: A => B): CsvRecordDecoder[B] = emap(a => Right(f(a)))
 
-  final def emap[B](f: A => Either[String, B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
+  final def emap[B](f: A => Either[String, B]): CsvRecordDecoder[B] = emapAtIndex(a => f(a).left.map((0, _)))
+
+  final def emapAtIndex[B](f: A => Either[(Int, String), B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
     override val numFields = self.numFields
     override def decode(fields: IndexedSeq[String]) = {
       self.decode(fields).flatMap { a =>
-        f(a).left.map { msg =>
-          // stick the error on the first column
-          val errors = SortedMap(0 -> CsvRecordDecoder.Errors.Record(msg))
+        f(a).left.map { case (i, msg) =>
+          val errors = SortedMap(i -> CsvRecordDecoder.Errors.Record(msg))
           CsvRecordDecoder.Errors(fields, errors)
         }
       }
@@ -49,7 +50,7 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
     errors: SortedMap[Int, Errors.Error],
   ) extends RuntimeException({
       val reasons = errors.toList.map({ case (i, e) => s"index ${i.toString} ${e.toString}" })
-      s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.toString}"
+      s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.mkString(";")}"
     }) with NoStackTrace
   object Errors {
 
