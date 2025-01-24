@@ -26,6 +26,9 @@ jobs:
           java-version: '11'
           java-package: jdk
 
+      - name: Install SBT
+        uses: sbt/setup-sbt@v1
+
       - name: Cache SBT
         uses: coursier/cache-action@v6
         with:
