@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     name: Test
     strategy:
       matrix:
@@ -25,6 +25,9 @@ jobs:
           distribution: zulu
           java-version: '11'
           java-package: jdk
+
+      - name: Install SBT
+        uses: sbt/setup-sbt@v1
 
       - name: Cache SBT
         uses: coursier/cache-action@v6

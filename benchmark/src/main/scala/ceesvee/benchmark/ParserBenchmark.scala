@@ -37,7 +37,7 @@ class ParserBenchmark {
 
   @Benchmark
   def scalaCsv: List[List[String]] = {
-    import com.github.tototoshi.csv.defaultCSVFormat
+    import com.github.tototoshi.csv.CSVFormat.defaultCSVFormat
     com.github.tototoshi.csv.CSVReader.open(linesReader).all()
   }
 

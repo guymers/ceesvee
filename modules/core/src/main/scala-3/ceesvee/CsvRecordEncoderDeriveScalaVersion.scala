@@ -4,6 +4,7 @@ import scala.compiletime.erasedValue
 import scala.compiletime.summonInline
 import scala.deriving.Mirror
 
+@SuppressWarnings(Array("org.wartremover.warts.Recursion"))
 trait CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
 
   inline def summonAll[T <: Tuple]: List[CsvRecordEncoder[?]] = inline erasedValue[T] match {

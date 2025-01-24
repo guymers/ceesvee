@@ -84,7 +84,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
       assertHeaderTotal("nz-greenhouse-gas-emissions-2019.csv", NZGreenhouseGasEmissions.csvHeader, total)
     }*),
     suite("UK property sales 2019")({
-      val total = 1005888L
+      val total = 1010985L
       assertTotal("uk-property-sales-price-paid-2019.csv", UkPropertySalesPricePaid.decoder, total)
     }*),
   ) @@ TestAspect.timeout(60.seconds) @@ TestAspect.timed

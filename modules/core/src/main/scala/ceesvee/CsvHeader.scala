@@ -32,7 +32,7 @@ object CsvHeader {
     errors: SortedMap[String, CsvRecordDecoder.Errors.Error],
   ) extends RuntimeException({
       val reasons = errors.toList.map({ case (h, e) => s"column $h ${e.toString}" })
-      s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.toString}"
+      s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.mkString(";")}"
     }) with NoStackTrace
 
   /**
