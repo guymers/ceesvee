@@ -1,11 +1,11 @@
 // format: off
 
 val catsVersion = "2.13.0"
-val fs2Version = "3.11.0"
-val zioVersion = "2.1.6"
+val fs2Version = "3.12.0"
+val zioVersion = "2.1.17"
 
 val Scala213 = "2.13.16"
-val Scala3 = "3.3.4"
+val Scala3 = "3.3.6"
 
 inThisBuild(Seq(
   organization := "io.github.guymers",
@@ -16,8 +16,7 @@ inThisBuild(Seq(
   ),
   scmInfo := Some(ScmInfo(url("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git")),
 
-  sonatypeCredentialHost := "s01.oss.sonatype.org",
-  sonatypeRepository := "https://s01.oss.sonatype.org/service/local",
+  sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost,
 ))
 
 lazy val commonSettings = Seq(
@@ -134,7 +133,7 @@ lazy val core = module("core")
       case Some((2, _)) => Seq(
         "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.10",
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        "com.chuusai" %% "shapeless" % "2.3.12" % Test,
+        "com.chuusai" %% "shapeless" % "2.3.13" % Test,
       )
       case _ => Seq.empty
     }),
@@ -144,7 +143,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.1.0.2" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.1.0.5" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.3" cross CrossVersion.full))

@@ -13,6 +13,7 @@ trait CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
 
   def join[T](cc: CaseClass[Typeclass, T]): Typeclass[T] = new CsvRecordDecoder[T] {
     override val numFields = cc.parameters.foldLeft(0)(_ + _.typeclass.numFields)
+    @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))
     override def decode(fields: IndexedSeq[String]) = {
       val errs = SortedMap.newBuilder[Int, Errors.Error]
       val values = Array.ofDim[Any](cc.parameters.length)
