@@ -11,6 +11,7 @@ trait CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
 
   def join[T](cc: CaseClass[Typeclass, T]): Typeclass[T] = new CsvRecordEncoder[T] {
     override val numFields = cc.parameters.foldLeft(0)(_ + _.typeclass.numFields)
+    @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))
     override def encode(t: T) = {
       val builder = IndexedSeq.newBuilder[String]
       builder.sizeHint(numFields)
