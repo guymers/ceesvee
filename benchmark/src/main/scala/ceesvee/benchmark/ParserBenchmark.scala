@@ -11,6 +11,12 @@ import java.util.concurrent.TimeUnit
 @State(Scope.Thread)
 @BenchmarkMode(Array(Mode.AverageTime))
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Fork(
+  jvmArgs = Array(
+    "--enable-preview",
+    "--add-modules=jdk.incubator.vector",
+  ),
+)
 class ParserBenchmark {
 
   private def line(i: Int) = List("basic string", " \"quoted \nstring\" ", i.toString, "456.789", "true").mkString(",")
@@ -33,6 +39,11 @@ class ParserBenchmark {
   @Benchmark
   def ceesvee: List[List[String]] = {
     _root_.ceesvee.CsvParser.parse[List](linesChunked, ceesveeOptions).toList
+  }
+
+  @Benchmark
+  def ceesveeVector: List[List[String]] = {
+    _root_.ceesvee.CsvParser.parseVector[List](linesChunked, ceesveeOptions).toList
   }
 
   @Benchmark

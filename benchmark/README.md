@@ -3,11 +3,12 @@
 
 ```
 # JMH version: 1.37
-# VM version: JDK 23.0.2, OpenJDK 64-Bit Server VM, 23.0.2+7-jvmci-b01
-Benchmark                  Mode  Cnt    Score   Error  Units
-ParserBenchmark.ceesvee    avgt   10  267.157 ± 2.295  us/op
-ParserBenchmark.scalaCsv   avgt   10  776.875 ± 3.156  us/op
-ParserBenchmark.univocity  avgt   10  190.484 ± 0.927  us/op
+# VM version: JDK 24.0.1, OpenJDK 64-Bit Server VM, 24.0.1
+Benchmark                      Mode  Cnt    Score   Error  Units
+ParserBenchmark.ceesvee        avgt   10  309.539 ± 0.643  us/op
+ParserBenchmark.ceesveeVector  avgt   10  149.307 ± 0.552  us/op
+ParserBenchmark.scalaCsv       avgt   10  711.367 ± 0.893  us/op
+ParserBenchmark.univocity      avgt   10  203.077 ± 5.289  us/o
 ```
 
 `benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.DecoderBenchmark`
