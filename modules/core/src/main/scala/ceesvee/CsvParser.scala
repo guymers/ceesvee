@@ -82,32 +82,36 @@ object CsvParser {
 
   def ignoreLine(line: String, options: Options): Boolean = {
     val l = options.trim.strip(line)
+    ignoreTrimmedLine(l, options)
+  }
 
-    def isBlank = options.skipBlankRows && l.isEmpty
-    def isComment = options.commentPrefix.filter(_.nonEmpty).exists(l.startsWith(_))
+  private[ceesvee] def ignoreTrimmedLine(line: String, options: Options): Boolean = {
+    def isBlank = options.skipBlankRows && line.isEmpty
+    def isComment = options.commentPrefix.filter(_.nonEmpty).exists(line.startsWith(_))
 
     isBlank || isComment
   }
 
   /**
-   * Splits the given strings into CSV lines by splitting on either '\r\n' and
+   * Splits the given strings into CSV lines by splitting on either '\r\n' or
    * '\n'.
    *
    * '"' is the only valid escape for nested double quotes.
    */
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
+  def splitLines(in: Iterator[String], options: Options): Iterator[String] = new SplitLinesIterator(in, options)
   @SuppressWarnings(Array(
     "org.wartremover.warts.MutableDataStructures",
     "org.wartremover.warts.Throw",
     "org.wartremover.warts.Var",
   ))
-  def splitLines(in: Iterator[String], options: Options): Iterator[String] = new Iterator[String] {
+  private final class SplitLinesIterator(in: Iterator[String], options: Options) extends Iterator[String] {
     private val toOutput = mutable.Queue.empty[String]
     private var state = State.initial
 
-    override def hasNext: Boolean = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
+    override def hasNext = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
 
-    @tailrec override def next(): String = {
+    @tailrec override def next() = {
       if (toOutput.nonEmpty) {
         toOutput.dequeue()
       } else {

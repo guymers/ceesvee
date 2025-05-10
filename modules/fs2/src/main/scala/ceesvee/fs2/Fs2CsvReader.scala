@@ -1,7 +1,7 @@
 package ceesvee.fs2
 
 import _root_.fs2.Chunk
-import _root_.fs2.Pipe
+import _root_.fs2.Pipe as Fs2Pipe
 import _root_.fs2.Pull
 import _root_.fs2.RaiseThrowable
 import _root_.fs2.Stream
@@ -28,7 +28,7 @@ object Fs2CsvReader {
   def decodeWithHeader[F[_]: RaiseThrowable, T](
     header: CsvHeader[T],
     options: CsvReader.Options,
-  ): Pipe[F, String, Either[CsvHeader.Errors, T]] = {
+  ): Fs2Pipe[F, String, Either[CsvHeader.Errors, T]] = {
 
     @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
     def go(
@@ -70,7 +70,7 @@ object Fs2CsvReader {
    */
   def decode[F[_], T](
     options: CsvReader.Options,
-  )(implicit F: RaiseThrowable[F], D: CsvRecordDecoder[T]): Pipe[F, String, Either[CsvRecordDecoder.Errors, T]] = {
+  )(implicit F: RaiseThrowable[F], D: CsvRecordDecoder[T]): Fs2Pipe[F, String, Either[CsvRecordDecoder.Errors, T]] = {
     _.through(parse(options)).map(D.decode(_))
   }
 }

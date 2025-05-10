@@ -1,7 +1,7 @@
 package ceesvee.fs2
 
 import _root_.fs2.Chunk
-import _root_.fs2.Pipe
+import _root_.fs2.Pipe as Fs2Pipe
 import _root_.fs2.Pull
 import _root_.fs2.RaiseThrowable
 import _root_.fs2.Stream
@@ -24,7 +24,7 @@ object Fs2CsvParser {
    */
   def parse[F[_]: RaiseThrowable](
     options: CsvParser.Options,
-  ): Pipe[F, String, ArraySeq[String]] = {
+  ): Fs2Pipe[F, String, ArraySeq[String]] = {
     _.through(splitLines(options))
       .filter(str => !ignoreLine(str, options))
       .map(parseLine[ArraySeq](_, options))
@@ -40,7 +40,7 @@ object Fs2CsvParser {
    */
   def splitLines[F[_]: RaiseThrowable](
     options: CsvParser.Options,
-  ): Pipe[F, String, String] = {
+  ): Fs2Pipe[F, String, String] = {
 
     @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
     def go(stream: Stream[F, String], state: State, first: Boolean): Pull[F, String, Unit] =

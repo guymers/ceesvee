@@ -5,7 +5,7 @@ import zio.ZIO
 import zio.test.ZIOSpecDefault
 import zio.test.assertTrue
 
-object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
+object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite with CsvParserLineSuite {
 
   override val spec = suite("CsvParser")(
     parserSuite,
@@ -77,54 +77,14 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
     parseLineSuite,
   )
 
-  private def parseLineSuite = {
-    import CsvParser.parseLine
-    import CsvParser.Options
-
-    suite("parse line")(
-      suite("escape character")(
-        test("double quote") {
-          val line = """a,"b""c",d,e"f"""
-          assertTrue(parseLine[List](line, Options.Defaults) == List("a", """b"c""", "d", "e\"f"))
-        },
-      ),
-      suite("trim")({
-        val line = """abc, def,ghi , jkl , " mno ", """
-
-        test("true") {
-          val opts = Options.Defaults.copy(trim = Options.Trim.True)
-          assertTrue(parseLine[List](line, opts) == List("abc", "def", "ghi", "jkl", " mno ", ""))
-        } ::
-        test("false") {
-          val opts = Options.Defaults.copy(trim = Options.Trim.False)
-          assertTrue(parseLine[List](line, opts) == List("abc", " def", "ghi ", " jkl ", " mno ", " "))
-        } ::
-        test("start") {
-          val opts = Options.Defaults.copy(trim = Options.Trim.Start)
-          assertTrue(parseLine[List](line, opts) == List("abc", "def", "ghi ", "jkl ", " mno ", ""))
-        } ::
-        test("end") {
-          val opts = Options.Defaults.copy(trim = Options.Trim.End)
-          assertTrue(parseLine[List](line, opts) == List("abc", " def", "ghi", " jkl", " mno ", ""))
-        } :: Nil
-      }),
-      test("complex") {
-        val line = "abc, def ,,\" g,\"\"h\"\",\ti\" , "
-        val result = parseLine[List](line, Options.Defaults)
-        assertTrue(result == List("abc", "def", "", " g,\"h\",\ti", ""))
-      },
-      test("json") {
-        val line = """abc,"{""data"": {""message"": ""blah \""quoted\""\n  pos 123""}, ""type"": ""unhandled""}",xyz"""
-        val result = parseLine[List](line, Options.Defaults)
-        assertTrue(result == List("abc", """{"data": {"message": "blah \"quoted\"\n  pos 123"}, "type": "unhandled"}""", "xyz"))
-      },
-    )
-  }
-
   override protected def parse(lines: Iterable[String], options: CsvParser.Options) = {
     val input = lines.mkString("\n").grouped(8192)
     val result = CsvParser.parse[List](input, options)
     ZIO.succeed(Chunk.fromIterator(result))
+  }
+
+  override protected def parseLine(line: String, options: CsvParser.Options) = {
+    CsvParser.parseLine[List](line, options)
   }
 }
 
@@ -205,4 +165,52 @@ trait CsvParserParserSuite { self: ZIOSpecDefault =>
       } :: Nil
     }),
   )
+}
+
+trait CsvParserLineSuite { self: ZIOSpecDefault =>
+
+  protected def parseLine(line: String, options: CsvParser.Options): List[String]
+
+  protected def parseLineSuite = {
+    import CsvParser.Options
+
+    suite("parse line")(
+      suite("escape character")(
+        test("double quote") {
+          val line = """a,"b""c",d,e"f"""
+          assertTrue(parseLine(line, Options.Defaults) == List("a", """b"c""", "d", "e\"f"))
+        },
+      ),
+      suite("trim")({
+        val line = """abc, def,ghi , jkl , " mno ", """
+
+        test("true") {
+          val opts = Options.Defaults.copy(trim = Options.Trim.True)
+          assertTrue(parseLine(line, opts) == List("abc", "def", "ghi", "jkl", " mno ", ""))
+        } ::
+        test("false") {
+          val opts = Options.Defaults.copy(trim = Options.Trim.False)
+          assertTrue(parseLine(line, opts) == List("abc", " def", "ghi ", " jkl ", " mno ", " "))
+        } ::
+        test("start") {
+          val opts = Options.Defaults.copy(trim = Options.Trim.Start)
+          assertTrue(parseLine(line, opts) == List("abc", "def", "ghi ", "jkl ", " mno ", ""))
+        } ::
+        test("end") {
+          val opts = Options.Defaults.copy(trim = Options.Trim.End)
+          assertTrue(parseLine(line, opts) == List("abc", " def", "ghi", " jkl", " mno ", ""))
+        } :: Nil
+      }),
+      test("complex") {
+        val line = "abc, def ,,\" g,\"\"h\"\",\ti\" , "
+        val result = parseLine(line, Options.Defaults)
+        assertTrue(result == List("abc", "def", "", " g,\"h\",\ti", ""))
+      },
+      test("json") {
+        val line = """abc,"{""data"": {""message"": ""blah \""quoted\""\n  pos 123""}, ""type"": ""unhandled""}",xyz"""
+        val result = parseLine(line, Options.Defaults)
+        assertTrue(result == List("abc", """{"data": {"message": "blah \"quoted\"\n  pos 123"}, "type": "unhandled"}""", "xyz"))
+      },
+    )
+  }
 }
