@@ -43,7 +43,7 @@ class ParserBenchmark {
 
   @Benchmark
   def ceesveeVector: List[List[String]] = {
-    _root_.ceesvee.CsvParser.parseVector[List](linesBytes.grouped(8192), ceesveeOptions, StandardCharsets.UTF_8).toList
+    _root_.ceesvee.CsvParserVector.parse[List](linesBytes.grouped(8192), ceesveeOptions, StandardCharsets.UTF_8).toList
   }
 
   @Benchmark

@@ -12,6 +12,12 @@ ParserBenchmark.scalaCsv       avgt    5  712.414 ± 5.120  us/op
 ParserBenchmark.univocity      avgt    5  193.677 ± 2.019  us/op
 ```
 
+AMD Ryzen 5 5600X
+```
+
+```
+
+
 `benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.DecoderBenchmark`
 
 ```
