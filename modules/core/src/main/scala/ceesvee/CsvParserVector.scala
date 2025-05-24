@@ -19,16 +19,16 @@ object CsvParserVector {
 
   /**
    * @see
-   *   [[parse]]
+   *   [[CsvParser.parse]]
    */
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
   def parse[C[_]](
     in: Iterator[Array[Byte]],
-    options: Options,
     charset: Charset,
+    options: Options,
   )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
     splitLines(in, options)
-      .map(parseLine(_, options, charset))
+      .map(parseLine(_, charset, options))
       .filter(fields => fields != null)
   }
 
@@ -39,10 +39,10 @@ object CsvParserVector {
    * '"' is the only valid escape for nested double quotes.
    */
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
-  def splitLines(in: Iterator[Array[Byte]], options: Options): Iterator[Array[Byte]] = new SplitLinesVectorIterator(in, options)
+  private def splitLines(in: Iterator[Array[Byte]], options: Options): Iterator[Array[Byte]] = new SplitLinesVectorIterator(in, options)
   private final class SplitLinesVectorIterator(in: Iterator[Array[Byte]], options: Options) extends Iterator[Array[Byte]] {
     private val toOutput = mutable.Queue.empty[Array[Byte]]
-    private var state = StateBytes.initial
+    private var state = State.initial
 
     override def hasNext = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
 
@@ -56,11 +56,11 @@ object CsvParserVector {
         }
 
         if (!in.hasNext) {
-          state = StateBytes.initial
+          state = State.initial
           leftover
         } else {
           val bytes = in.next()
-          val (newState, lines) = splitBytesIntoLinesVector(bytes, state)
+          val (newState, lines) = splitBytes(bytes, state)
           val _ = toOutput.enqueueAll(lines)
           state = newState
           next()
@@ -69,12 +69,12 @@ object CsvParserVector {
     }
   }
 
-  class StateBytes(
+  private[ceesvee] class State(
     val leftover: Array[Byte],
     val insideQuote: Boolean,
   )
-  object StateBytes {
-    val initial: StateBytes = new StateBytes(
+  private[ceesvee] object State {
+    val initial: State = new State(
       leftover = Array.emptyByteArray,
       insideQuote = false,
     )
@@ -87,10 +87,10 @@ object CsvParserVector {
 
   private val ByteVectorSpecies = ByteVector.SPECIES_PREFERRED
 
-  def splitBytesIntoLinesVector[C[S] <: Iterable[S]](
+  private[ceesvee] def splitBytes[C[S] <: Iterable[S]](
     bytes: Array[Byte],
-    state: StateBytes,
-  )(implicit f: Factory[Array[Byte], C[Array[Byte]]]): (StateBytes, C[Array[Byte]]) = {
+    state: State,
+  )(implicit f: Factory[Array[Byte], C[Array[Byte]]]): (State, C[Array[Byte]]) = {
 
     val builder = f.newBuilder
     var insideQuote = state.insideQuote
@@ -138,10 +138,6 @@ object CsvParserVector {
       }
       insideQuote = java.lang.Long.highestOneBit(quoteMask) == Long.MinValue
 
-//          println(string.substring(i, (i + ByteVectorSpecies.length).min(string.length)))
-//          println(String.format("%64s", java.lang.Long.toBinaryString(quotesMask)).replace(' ', '0'))
-//          println(("insideQuote", insideQuote, java.lang.Long.lowestOneBit(quotesMask), java.lang.Long.highestOneBit(quotesMask)))
-
       val crChars = vector.eq(CarriageReturn).toLong
       val nlChars = vector.eq(NewLine).toLong
       val crnlChars = crChars | nlChars
@@ -185,7 +181,7 @@ object CsvParserVector {
       bytes.slice(sliceStart, bytes.length)
     }
 
-    (new StateBytes(leftover, insideQuote = insideQuote), builder.result())
+    (new State(leftover, insideQuote = insideQuote), builder.result())
   }
 
   /**
@@ -194,8 +190,8 @@ object CsvParserVector {
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf", "org.wartremover.warts.Null"))
   private[ceesvee] def parseLine[C[_]](
     bytes: Array[Byte],
-    options: Options,
     charset: Charset,
+    options: Options,
   )(implicit f: Factory[String, C[String]]): C[String] = {
 
     val builder = f.newBuilder
@@ -334,7 +330,6 @@ object CsvParserVector {
       val dest = Array.ofDim[Byte](size)
 
       if (ignoreCount == 0) {
-//        println(s"1 System.arraycopy(${from_},  0, $size)")
         System.arraycopy(src, from_, dest, 0, size)
       } else {
         var srcPosition = from_
@@ -351,14 +346,12 @@ object CsvParserVector {
             srcPosition = i + 1
           } else {
             val positionSize = srcPosition - i
-//            println(s"2 System.arraycopy(${srcPosition},  $destPosition, $positionSize)")
             System.arraycopy(src, srcPosition, dest, destPosition, positionSize)
             srcPosition = i + 1
             destPosition = destPosition + positionSize
           }
         }
         if (srcPosition < to_) {
-//          println(s"3 System.arraycopy(${srcPosition},  $destPosition, ${to_ - srcPosition})")
           System.arraycopy(src, srcPosition, dest, destPosition, to_ - srcPosition)
         }
       }

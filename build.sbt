@@ -15,7 +15,6 @@ inThisBuild(Seq(
     Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
   ),
   scmInfo := Some(ScmInfo(url("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git")),
-  publishTo := localStaging.value
 ))
 
 lazy val commonSettings = Seq(
@@ -48,6 +47,7 @@ lazy val commonSettings = Seq(
     case Some((2, _)) => Seq(
       "-Vimplicits",
       "-Vtype-diffs",
+      "-Wconf:cat=scala3-migration:silent",
       "-Wdead-code",
       "-Wextra-implicit",
       "-Wnonunit-statement",
@@ -60,14 +60,11 @@ lazy val commonSettings = Seq(
       "-Xlint:_,-byname-implicit", // exclude byname-implicit https://github.com/scala/bug/issues/12072
     )
     case _ => Seq(
+      "-Wconf:name=PatternMatchExhaustivity:error",
       "-Wnonunit-statement",
       "-Wunused:all",
       "-Wvalue-discard",
     )
-  }),
-  Test / scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, _)) => Seq("-Wconf:cat=scala3-migration:silent")
-    case _ => Seq.empty
   }),
 
   Compile / console / scalacOptions ~= filterScalacConsoleOpts,
@@ -185,13 +182,13 @@ val TestCsvFiles = Map(
   // https://data.gov.uk/dataset/48c917d5-11a0-429f-a0db-0c5ae6ffa1c8/places-to-visit-in-causeway-coast-and-glens
   "uk-causeway-coast-and-glens.csv" -> (
     "https://ccgbcodni-cbcni.opendata.arcgis.com/datasets/42b6ad70a304442dbdb963974d44b433_0.csv",
-    "ad3b923ddd17a8fb774dc60b8ed2f2a8281f2cda",
+    "5a15f2bf5861b34f985da88b33523f18aba10c08",
   ),
 
   // https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads
   "uk-property-sales-price-paid-2019.csv" -> (
     "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2019.csv",
-    "f0c8da0dad28e849b78e9cd8f17927d83e0bb14c",
+    "58c6f8a445da148fdfc4041a7527cd17cf39b8d4",
   ),
 )
 

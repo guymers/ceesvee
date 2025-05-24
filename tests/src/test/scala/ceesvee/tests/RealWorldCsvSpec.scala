@@ -10,6 +10,7 @@ import ceesvee.tests.model.NZGreenhouseGasEmissions
 import ceesvee.tests.model.UkCausewayCoast
 import ceesvee.tests.model.UkPropertySalesPricePaid
 import ceesvee.zio.ZioCsvReader
+import ceesvee.zio.ZioCsvReaderVector
 import zio.ZIO
 import zio.durationInt
 import zio.stream.ZPipeline
@@ -28,6 +29,7 @@ import java.nio.file.Paths
 
 object RealWorldCsvSpec extends ZIOSpecDefault {
 
+  private val charset = StandardCharsets.UTF_8
   private val options = CsvReader.Options.Defaults
 
   override val spec = suite("RealWorldCsv")(
@@ -35,8 +37,8 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
       val path = Paths.get(getClass.getResource("/csv/uk-causeway-coast-and-glens.csv").getPath)
 
       val expected = UkCausewayCoast(
-        x = BigDecimal("-6.78939818010469"),
-        y = BigDecimal("55.1552073423335"),
+        x = BigDecimal("677156.193266336"),
+        y = BigDecimal("934878.749389788"),
         name = "Hezlett House",
         address = "107 Sea Road, Castlerock, Co. Londonderry",
         town = "Castlerock",
@@ -68,9 +70,19 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
           }
         },
         test("zio") {
-          val stream = readFileZio(path)
+          val stream = readFileZio(path).via(ZPipeline.utfDecode)
           ZIO.scoped[Any] {
             ZioCsvReader.decodeWithHeader(stream, UkCausewayCoast.csvHeader, options).flatMap { s =>
+              s.runCollect.mapError(Left(_))
+            }
+          }.map { result =>
+            assertResult(result)
+          }
+        },
+        test("zio vector") {
+          val stream = readFileZio(path)
+          ZIO.scoped[Any] {
+            ceesvee.zio.ZioCsvReaderVector.decodeWithHeader(stream, UkCausewayCoast.csvHeader, charset, options).flatMap { s =>
               s.runCollect.mapError(Left(_))
             }
           }.map { result =>
@@ -84,7 +96,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
       assertHeaderTotal("nz-greenhouse-gas-emissions-2019.csv", NZGreenhouseGasEmissions.csvHeader, total)
     }*),
     suite("UK property sales 2019")({
-      val total = 1010985L
+      val total = 1011344L
       assertTotal("uk-property-sales-price-paid-2019.csv", UkPropertySalesPricePaid.decoder, total)
     }*),
   ) @@ TestAspect.timeout(60.seconds) @@ TestAspect.timed
@@ -111,10 +123,18 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         val pipeline = ZioCsvReader.decode(options)(decoder, implicitly).mapError {
           case e: CsvParser.Error.LineTooLong => e
         }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
-        readFileZio(path).via(pipeline).runCount.map { count =>
+        readFileZio(path).via(ZPipeline.utfDecode).via(pipeline).runCount.map { count =>
           assertTrue(count == total)
         }
       },
+//      test("zio vector") {
+//        val pipeline = ZioCsvReaderVector.decode(charset, options)(decoder, implicitly).mapError {
+//          case e: CsvParser.Error.LineTooLong => e
+//        }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
+//        readFileZio(path).via(pipeline).runCount.map { count =>
+//          assertTrue(count == total)
+//        }
+//      },
     )
   }
 
@@ -138,7 +158,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         }
       },
       test("zio") {
-        val stream = readFileZio(path)
+        val stream = readFileZio(path).via(ZPipeline.utfDecode)
         ZIO.scoped[Any] {
           ZioCsvReader.decodeWithHeader(stream, header, options).flatMap { s =>
             s.collectRight.runCount.mapError(Left(_))
@@ -194,6 +214,6 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
   }
 
   private def readFileZio(path: Path) = {
-    ZStream.fromPath(path, chunkSize = 16384) >>> ZPipeline.utfDecode
+    ZStream.fromPath(path, chunkSize = 16384)
   }
 }

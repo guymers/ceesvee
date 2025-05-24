@@ -5,12 +5,6 @@ import scala.annotation.tailrec
 import scala.collection.Factory
 import scala.collection.mutable
 
-@SuppressWarnings(Array(
-  "org.wartremover.warts.MutableDataStructures",
-  "org.wartremover.warts.Throw",
-  "org.wartremover.warts.Var",
-  "org.wartremover.warts.While",
-))
 object CsvParser {
 
   trait Options {
@@ -105,7 +99,12 @@ object CsvParser {
    * '"' is the only valid escape for nested double quotes.
    */
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
-  private[ceesvee] def splitLines(in: Iterator[String], options: Options): Iterator[String] = new SplitLinesIterator(in, options)
+  def splitLines(in: Iterator[String], options: Options): Iterator[String] = new SplitLinesIterator(in, options)
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.MutableDataStructures",
+    "org.wartremover.warts.Throw",
+    "org.wartremover.warts.Var",
+  ))
   private final class SplitLinesIterator(in: Iterator[String], options: Options) extends Iterator[String] {
     private val toOutput = mutable.Queue.empty[String]
     private var state = State.initial
@@ -153,7 +152,12 @@ object CsvParser {
     )
   }
 
-  private[ceesvee] def splitStrings[C[S] <: Iterable[S]](
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.MutableDataStructures",
+    "org.wartremover.warts.Var",
+    "org.wartremover.warts.While",
+  ))
+  def splitStrings[C[S] <: Iterable[S]](
     strings: C[String],
     state: State,
   )(implicit f: Factory[String, C[String]]): (State, C[String]) = {
@@ -169,7 +173,7 @@ object CsvParser {
         val concat = leftover.concat(string)
 
         // assume we have already processed `leftover`,
-        // reprocess the last character in case it was a '\', '"' or '\r'
+        // reprocess the last character in case it was a '"' or '\r'
         var i = (leftover.length - 1).max(0)
         var sliceStart = 0
 
@@ -219,6 +223,11 @@ object CsvParser {
   /**
    * Parse a line into a collection of CSV fields.
    */
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.MutableDataStructures",
+    "org.wartremover.warts.Var",
+    "org.wartremover.warts.While",
+  ))
   def parseLine[C[_]](
     line: String,
     options: Options,
@@ -289,4 +298,5 @@ object CsvParser {
 
     fields.result()
   }
+
 }
