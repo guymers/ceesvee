@@ -1,6 +1,5 @@
 package ceesvee
 
-import jdk.incubator.vector.ByteVector
 import zio.Chunk
 import zio.ZIO
 import zio.test.ZIOSpecDefault
@@ -56,10 +55,6 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
           val line = """a,"b""c",d,e"f"""
           assertTrue(parseLine[List](line, Options.Defaults) == List("a", """b"c""", "d", "e\"f"))
         },
-//        test("slash") {
-//          val line = """a,"b\"c",d,e\f"""
-//          assertTrue(parseLine[List](line, Options.Defaults) == List("a", """b"c""", "d", "e\\f"))
-//        },
       ),
       suite("trim")({
         val line = """abc, def,ghi , jkl , " mno ", """
@@ -96,6 +91,20 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
   }
 }
 
+object CsvParserVectorSpec extends ZIOSpecDefault with CsvParserParserSuite {
+
+  override val spec = suite("CsvParserVector")(
+    parserSuite,
+  )
+
+  override protected def parse(lines: Iterable[String], options: CsvParser.Options) = {
+    val charset = StandardCharsets.UTF_8
+    val input = lines.mkString("\n").grouped(8192).map(_.getBytes(charset))
+    val result = CsvParser.parseVector[List](input, options, charset)
+    ZIO.succeed(Chunk.fromIterator(result))
+  }
+}
+
 trait CsvParserParserSuite { self: ZIOSpecDefault =>
 
   protected def parse(
@@ -109,7 +118,6 @@ trait CsvParserParserSuite { self: ZIOSpecDefault =>
 
       val lines = (1 to 10).map(line(_))
       parse(lines, CsvParser.Options.Defaults).map { result =>
-        result.foreach(println(_))
         assertTrue(result.length == 10)
       }
     },

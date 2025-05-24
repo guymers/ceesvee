@@ -15,8 +15,7 @@ inThisBuild(Seq(
     Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
   ),
   scmInfo := Some(ScmInfo(url("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git")),
-
-  sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost,
+  publishTo := localStaging.value
 ))
 
 lazy val commonSettings = Seq(

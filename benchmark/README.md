@@ -1,14 +1,15 @@
 
 `benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.ParserBenchmark`
 
+AMD Ryzen 9 9950X
 ```
 # JMH version: 1.37
 # VM version: JDK 24.0.1, OpenJDK 64-Bit Server VM, 24.0.1
 Benchmark                      Mode  Cnt    Score   Error  Units
-ParserBenchmark.ceesvee        avgt   10  309.539 ± 0.643  us/op
-ParserBenchmark.ceesveeVector  avgt   10  149.307 ± 0.552  us/op
-ParserBenchmark.scalaCsv       avgt   10  711.367 ± 0.893  us/op
-ParserBenchmark.univocity      avgt   10  203.077 ± 5.289  us/o
+ParserBenchmark.ceesvee        avgt    5  279.296 ± 1.040  us/op
+ParserBenchmark.ceesveeVector  avgt    5  145.234 ± 1.457  us/op
+ParserBenchmark.scalaCsv       avgt    5  712.414 ± 5.120  us/op
+ParserBenchmark.univocity      avgt    5  193.677 ± 2.019  us/op
 ```
 
 `benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.DecoderBenchmark`

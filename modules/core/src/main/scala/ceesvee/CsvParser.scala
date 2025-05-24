@@ -1,16 +1,19 @@
 package ceesvee
 
+import java.nio.charset.Charset
 import jdk.incubator.vector.ByteVector
-
-import java.nio.charset.StandardCharsets
 import scala.annotation.switch
 import scala.annotation.tailrec
 import scala.collection.Factory
 import scala.collection.mutable
 
+@SuppressWarnings(Array(
+  "org.wartremover.warts.MutableDataStructures",
+  "org.wartremover.warts.Throw",
+  "org.wartremover.warts.Var",
+  "org.wartremover.warts.While",
+))
 object CsvParser {
-
-  private val VectorAPIAvailable = ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent
 
   trait Options {
     def commentPrefix: Option[String]
@@ -91,10 +94,12 @@ object CsvParser {
    */
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
   def parseVector[C[_]](
-    in: Iterator[String],
+    in: Iterator[Array[Byte]],
     options: Options,
+    charset: Charset,
   )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
     splitLinesVector(in, options)
+      .map(bytes => new String(bytes, charset))
       .filter(str => !ignoreLine(str, options))
       .map(parseLine(_, options))
   }
@@ -115,25 +120,14 @@ object CsvParser {
    * '"' is the only valid escape for nested double quotes.
    */
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
-  def splitLines(in: Iterator[String], options: Options): Iterator[String] = splitLines_(in, options, vector = false)
-
-  def splitLinesVector(in: Iterator[String], options: Options): Iterator[String] = splitLines_(in, options, vector = true)
-
-  @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
-  @SuppressWarnings(Array(
-    "org.wartremover.warts.MutableDataStructures",
-    "org.wartremover.warts.Throw",
-    "org.wartremover.warts.Var",
-  ))
-  private def splitLines_(in: Iterator[String], options: Options, vector: Boolean): Iterator[String] = new Iterator[String] {
+  def splitLines(in: Iterator[String], options: Options): Iterator[String] = new SplitLinesIterator(in, options)
+  private final class SplitLinesIterator(in: Iterator[String], options: Options) extends Iterator[String] {
     private val toOutput = mutable.Queue.empty[String]
     private var state = State.initial
 
-    private val split = if (vector) splitStringsVector[List](_, _) else splitStrings[List](_, _)
+    override def hasNext = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
 
-    override def hasNext: Boolean = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
-
-    @tailrec override def next(): String = {
+    @tailrec override def next() = {
       if (toOutput.nonEmpty) {
         toOutput.dequeue()
       } else {
@@ -147,7 +141,44 @@ object CsvParser {
           leftover
         } else {
           val str = in.next()
-          val (newState, lines) = split(List(str), state)
+          val (newState, lines) = splitStrings(List(str), state)
+          val _ = toOutput.enqueueAll(lines)
+          state = newState
+          next()
+        }
+      }
+    }
+  }
+
+  /**
+   * Splits the given byte arrays into CSV lines using the Vector API by
+   * splitting on either '\r\n' or '\n'.
+   *
+   * '"' is the only valid escape for nested double quotes.
+   */
+  @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
+  def splitLinesVector(in: Iterator[Array[Byte]], options: Options): Iterator[Array[Byte]] = new SplitLinesVectorIterator(in, options)
+  private final class SplitLinesVectorIterator(in: Iterator[Array[Byte]], options: Options) extends Iterator[Array[Byte]] {
+    private val toOutput = mutable.Queue.empty[Array[Byte]]
+    private var state = StateBytes.initial
+
+    override def hasNext = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
+
+    @tailrec override def next() = {
+      if (toOutput.nonEmpty) {
+        toOutput.dequeue()
+      } else {
+        val leftover = state.leftover
+        if (leftover.length > options.maximumLineLength) {
+          throw Error.LineTooLong(options.maximumLineLength)
+        }
+
+        if (!in.hasNext) {
+          state = StateBytes.initial
+          leftover
+        } else {
+          val bytes = in.next()
+          val (newState, lines) = splitBytesIntoLinesVector(bytes, state)
           val _ = toOutput.enqueueAll(lines)
           state = newState
           next()
@@ -174,11 +205,6 @@ object CsvParser {
     )
   }
 
-  @SuppressWarnings(Array(
-    "org.wartremover.warts.MutableDataStructures",
-    "org.wartremover.warts.Var",
-    "org.wartremover.warts.While",
-  ))
   def splitStrings[C[S] <: Iterable[S]](
     strings: C[String],
     state: State,
@@ -212,13 +238,6 @@ object CsvParser {
                 }
               }
 
-//            case '\\' =>
-//              if (insideQuote && (i + 1) < concat.length && concat(i + 1) == '"') { // escaped quote
-//                i += 2
-//              } else {
-//                i += 1
-//              }
-
             case '\n' =>
               if (!insideQuote) {
                 val _ = builder += concat.substring(sliceStart, i)
@@ -249,125 +268,127 @@ object CsvParser {
     (State(leftover, insideQuote = insideQuote), builder.result())
   }
 
-  val Quote: Byte = '"'
-  val NewLine: Byte = '\n'
-  val CarriageReturn: Byte = '\r'
+  class StateBytes(
+    val leftover: Array[Byte],
+    val insideQuote: Boolean,
+  )
+  object StateBytes {
+    val initial: StateBytes = new StateBytes(
+      leftover = Array.emptyByteArray,
+      insideQuote = false,
+    )
+  }
+
+  private val Quote: Byte = '"'
+  private val NewLine: Byte = '\n'
+  private val CarriageReturn: Byte = '\r'
 
   private val ByteVectorSpecies = ByteVector.SPECIES_PREFERRED
 
-  @SuppressWarnings(Array(
-    "org.wartremover.warts.MutableDataStructures",
-    "org.wartremover.warts.Var",
-    "org.wartremover.warts.While",
-  ))
-  def splitStringsVector[C[S] <: Iterable[S]](
-    strings: C[String],
-    state: State,
-  )(implicit f: Factory[String, C[String]]): (State, C[String]) = {
+  def splitBytesIntoLinesVector[C[S] <: Iterable[S]](
+    bytes: Array[Byte],
+    state: StateBytes,
+  )(implicit f: Factory[Array[Byte], C[Array[Byte]]]): (StateBytes, C[Array[Byte]]) = {
 
     val builder = f.newBuilder
     var insideQuote = state.insideQuote
-    var leftover = state.leftover
+    var sliceStart = 0
+    var prevNLChars = 0L
 
-    val it = strings.iterator
-    while (it.hasNext) {
-      val string = it.next()
-      if (string.nonEmpty) {
+    val loopBound = ByteVectorSpecies.loopBound(bytes.length)
 
-//        val concat = leftover.concat(string)
+    var i = 0
+    while (i < bytes.length) {
+      val vector = if (i >= loopBound) {
+        val m = ByteVectorSpecies.indexInRange(i, bytes.length)
+        ByteVector.fromArray(ByteVectorSpecies, bytes, i, m)
+      } else {
+        ByteVector.fromArray(ByteVectorSpecies, bytes, i)
+      }
 
-//        var i = (leftover.length - 1).max(0)
-        var sliceStart = 0
+      val quoteChars = vector.eq(Quote).toLong
 
-        val bytes = string.getBytes(StandardCharsets.UTF_8)
-        val loopBound = ByteVectorSpecies.loopBound(bytes.length)
+      // set all bits between quotes
+      var quoteMask = quoteChars
+      var quoteStart = if (insideQuote) 0 else -1
+      var quoteMaskBitsSet = quoteMask
+      while (quoteMaskBitsSet > 0) {
+        val r = java.lang.Long.numberOfTrailingZeros(quoteMaskBitsSet)
+        quoteMaskBitsSet = quoteMaskBitsSet ^ java.lang.Long.lowestOneBit(quoteMaskBitsSet)
 
-        var i = 0
-        while (i < bytes.length) {
-          val vector = if (i >= loopBound) {
-            val m = ByteVectorSpecies.indexInRange(i, bytes.length)
-            ByteVector.fromArray(ByteVectorSpecies, bytes, i, m)
-          } else {
-            ByteVector.fromArray(ByteVectorSpecies, bytes, i)
+        if (quoteStart >= 0) {
+          var j = r - 1
+          while (j >= quoteStart) {
+            quoteMask = quoteMask | (1L << j)
+            j = j - 1
           }
-
-          var quotesMask = vector.eq(Quote).toLong
-
-          var inQuoteStart = if (insideQuote) 0 else -1
-          var temp_ = quotesMask
-          while (temp_ != 0) { // https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
-            val r = java.lang.Long.numberOfTrailingZeros(temp_)
-            if (inQuoteStart >= 0) {
-              var j = r - 1
-              while (j > inQuoteStart) {
-                quotesMask = quotesMask | (1L << j)
-                j = j - 1
-              }
-              inQuoteStart = -1
-            } else {
-              inQuoteStart = r
-            }
-            temp_ = temp_ ^ java.lang.Long.lowestOneBit(temp_)
-          }
-          if (inQuoteStart >= 0) {
-            var j = ByteVectorSpecies.length - 1
-            while (j > inQuoteStart) {
-              quotesMask = quotesMask | (1L << j)
-              j = j - 1
-            }
-          }
+          quoteStart = -1
+        } else {
+          quoteStart = r
+        }
+      }
+      if (quoteStart >= 0) {
+        var j = ByteVectorSpecies.length - 1
+        while (j > quoteStart) {
+          quoteMask = quoteMask | (1L << j)
+          j = j - 1
+        }
+      }
+      insideQuote = java.lang.Long.highestOneBit(quoteMask) == Long.MinValue
 
 //          println(string.substring(i, (i + ByteVectorSpecies.length).min(string.length)))
 //          println(String.format("%64s", java.lang.Long.toBinaryString(quotesMask)).replace(' ', '0'))
-          insideQuote = java.lang.Long.highestOneBit(quotesMask) == Long.MinValue
 //          println(("insideQuote", insideQuote, java.lang.Long.lowestOneBit(quotesMask), java.lang.Long.highestOneBit(quotesMask)))
 
-          val newlinesMask = vector.eq(NewLine)
-          val carriageReturnsMask = vector.eq(CarriageReturn)
-          val newlinesMask2 = newlinesMask.toLong | carriageReturnsMask.toLong
-          val newlinesIgnoringWithQuotes = newlinesMask2 & ~(newlinesMask2 & quotesMask)
+      val crChars = vector.eq(CarriageReturn).toLong
+      val nlChars = vector.eq(NewLine).toLong
+      val crnlChars = crChars | nlChars
+      val crIgnoringWithinQuotes = crChars & ~(crChars & quoteMask)
 
-          var temp2_ = newlinesIgnoringWithQuotes
-          while (temp2_ != 0) {
-            val r = java.lang.Long.numberOfTrailingZeros(temp2_)
-            val rr = i + r
-            // TODO use options.skipBlankLines but also need to ignore carriage returns
-//            if (sliceStart == rr) {
-//              // ignore carriage returns and empty lines
-//              ()
-//            } else {
-            if (sliceStart == 0) {
-              val _ = builder += (leftover ++ string.substring(sliceStart, rr))
-            } else {
-              val _ = builder += string.substring(sliceStart, rr)
-            }
-//            }
-            sliceStart = rr + 1
-            temp2_ = temp2_ ^ java.lang.Long.lowestOneBit(temp2_)
-          }
+      val crnlIgnoringWithinQuotes = crnlChars & ~(crnlChars & quoteMask)
+      val crCharsBeforeNl = crIgnoringWithinQuotes & ((nlChars >> 1) | (prevNLChars << 63))
+      prevNLChars = nlChars
 
-          i = i + ByteVectorSpecies.length
-        }
+      /* \ = \r, | = \n
+          a\|b\c|"d\|e"|f
+          000000010000100 = quoteChars
+          000000011111100 = quoteMask
+          010010000100000 = crChars
+          001000100010010 = nlChars
+          011010100110010 = crnlChars
+          010010000000000 = crIgnoringWithinQuotes
+          011010100000010 = crnlIgnoringWithinQuotes
+          010001000100100 = nlChars << 1
+          010000000000000 = crCharsBeforeNl
+       */
 
-        if (sliceStart == 0) {
-          leftover = leftover ++ string
-        } else {
-          leftover = string.substring(sliceStart, string.length)
-        }
+      var crnlIgnoringWithinQuotesBitsSet = crnlIgnoringWithinQuotes
+      while (crnlIgnoringWithinQuotesBitsSet > 0) {
+        val r = java.lang.Long.numberOfTrailingZeros(crnlIgnoringWithinQuotesBitsSet)
+        crnlIgnoringWithinQuotesBitsSet = crnlIgnoringWithinQuotesBitsSet ^ java.lang.Long.lowestOneBit(crnlIgnoringWithinQuotesBitsSet)
+
+        val sliceTo = i + r
+        val leftover = if (sliceStart == 0) state.leftover else Array.emptyByteArray
+        val _ = builder += leftover ++ arraySlice(bytes, sliceStart, sliceTo, i, crCharsBeforeNl)
+
+        sliceStart = sliceTo + 1
       }
+
+      i = i + ByteVectorSpecies.length
     }
 
-    (State(leftover, insideQuote = insideQuote), builder.result())
+    val leftover = if (sliceStart == 0) {
+      state.leftover ++ bytes
+    } else {
+      bytes.slice(sliceStart, bytes.length)
+    }
+
+    (new StateBytes(leftover, insideQuote = insideQuote), builder.result())
   }
 
   /**
    * Parse a line into a collection of CSV fields.
    */
-  @SuppressWarnings(Array(
-    "org.wartremover.warts.MutableDataStructures",
-    "org.wartremover.warts.Var",
-    "org.wartremover.warts.While",
-  ))
   def parseLine[C[_]](
     line: String,
     options: Options,
@@ -405,15 +426,6 @@ object CsvParser {
                 insideQuote = !insideQuote
               }
 
-//            case '\\' =>
-//              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
-//                val _ = slices += (sliceStart -> i)
-//                sliceStart = i + 1
-//                i += 2
-//              } else {
-//                i += 1
-//              }
-
             case _ =>
               i += 1
           }
@@ -448,4 +460,80 @@ object CsvParser {
     fields.result()
   }
 
+  // https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
+  private def bitsSet(l: Long): Iterator[Int] = new BitsSetIterator(l)
+  private final class BitsSetIterator(long: Long) extends Iterator[Int] {
+    private var l = long
+
+    override def hasNext = l > 0
+    override def next() = {
+      val i = java.lang.Long.numberOfTrailingZeros(l)
+      l = l ^ java.lang.Long.lowestOneBit(l)
+      i
+    }
+  }
+
+  @SuppressWarnings(Array(
+    "org.wartremover.warts.StringPlusAny",
+  )) // TODO remove
+  private def arraySlice(src: Array[Byte], from: Int, to: Int, offset: Int, ignore: Long) = {
+    var from_ = from
+    var to_ = to
+    var ignoreCount = 0
+
+    var ignoreBitsSet = ignore
+    while (ignoreBitsSet > 0) {
+      val i = java.lang.Long.numberOfTrailingZeros(ignoreBitsSet) + offset
+      ignoreBitsSet = ignoreBitsSet ^ java.lang.Long.lowestOneBit(ignoreBitsSet)
+
+      if (i < from_ || i > to_) {
+        ()
+      } else if (i == from_) {
+        from_ = from_ + 1
+      } else if (i == to_) {
+        to_ = to_ - 1
+      } else {
+        ignoreCount = ignoreCount + 1
+      }
+    }
+
+    val size = to_ - from_ + ignoreCount
+    if (size <= 0 || from_ >= to_) {
+      Array.emptyByteArray
+    } else {
+      val dest = Array.ofDim[Byte](size)
+
+      if (ignoreCount == 0) {
+//        println(s"1 System.arraycopy(${from_},  0, $size)")
+        System.arraycopy(src, from_, dest, 0, size)
+      } else {
+        var srcPosition = from_
+        var destPosition = 0
+
+        var ignoreBitsSet2 = ignore
+        while (ignoreBitsSet2 > 0) {
+          val i = java.lang.Long.numberOfTrailingZeros(ignoreBitsSet2) + offset
+          ignoreBitsSet2 = ignoreBitsSet2 ^ java.lang.Long.lowestOneBit(ignoreBitsSet2)
+
+          if (i < from_ || i > to_) {
+            ()
+          } else if (srcPosition == i) {
+            srcPosition = i + 1
+          } else {
+            val positionSize = srcPosition - i
+//            println(s"2 System.arraycopy(${srcPosition},  $destPosition, $positionSize)")
+            System.arraycopy(src, srcPosition, dest, destPosition, positionSize)
+            srcPosition = i + 1
+            destPosition = destPosition + positionSize
+          }
+        }
+        if (srcPosition < to_) {
+//          println(s"3 System.arraycopy(${srcPosition},  $destPosition, ${to_ - srcPosition})")
+          System.arraycopy(src, srcPosition, dest, destPosition, to_ - srcPosition)
+        }
+      }
+
+      dest
+    }
+  }
 }
