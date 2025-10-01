@@ -53,10 +53,6 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
           val line = """a,"b""c",d,e"f"""
           assertTrue(parseLine[List](line, Options.Defaults) == List("a", """b"c""", "d", "e\"f"))
         },
-        test("slash") {
-          val line = """a,"b\"c",d,e\f"""
-          assertTrue(parseLine[List](line, Options.Defaults) == List("a", """b"c""", "d", "e\\f"))
-        },
       ),
       suite("trim")({
         val line = """abc, def,ghi , jkl , " mno ", """
@@ -82,6 +78,11 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
         val line = "abc, def ,,\" g,\"\"h\"\",\ti\" , "
         val result = parseLine[List](line, Options.Defaults)
         assertTrue(result == List("abc", "def", "", " g,\"h\",\ti", ""))
+      },
+      test("json") {
+        val line = """abc,"{""data"": {""message"": ""blah \""quoted\""\n  pos 123""}, ""type"": ""unhandled""}",xyz"""
+        val result = parseLine[List](line, Options.Defaults)
+        assertTrue(result == List("abc", """{"data": {"message": "blah \"quoted\"\n  pos 123"}, "type": "unhandled"}""", "xyz"))
       },
     )
   }
