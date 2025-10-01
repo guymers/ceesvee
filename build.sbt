@@ -1,8 +1,8 @@
 // format: off
 
 val catsVersion = "2.13.0"
-val fs2Version = "3.12.0"
-val zioVersion = "2.1.17"
+val fs2Version = "3.12.2"
+val zioVersion = "2.1.19"
 
 val Scala213 = "2.13.16"
 val Scala3 = "3.3.6"
@@ -15,8 +15,6 @@ inThisBuild(Seq(
     Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
   ),
   scmInfo := Some(ScmInfo(url("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git")),
-
-  sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeCentralHost,
 ))
 
 lazy val commonSettings = Seq(
