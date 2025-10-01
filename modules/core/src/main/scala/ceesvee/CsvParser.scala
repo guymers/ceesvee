@@ -93,7 +93,7 @@ object CsvParser {
    * Splits the given strings into CSV lines by splitting on either '\r\n' and
    * '\n'.
    *
-   * Both '"' and '\' are valid escapes for nested double quotes.
+   * '"' is the only valid escape for nested double quotes.
    */
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
   @SuppressWarnings(Array(
@@ -169,7 +169,7 @@ object CsvParser {
         val concat = leftover.concat(string)
 
         // assume we have already processed `leftover`,
-        // reprocess the last character in case it was a '\', '"' or '\r'
+        // reprocess the last character in case it was a '"' or '\r'
         var i = (leftover.length - 1).max(0)
         var sliceStart = 0
 
@@ -184,13 +184,6 @@ object CsvParser {
                 if (i < concat.length) {
                   insideQuote = !insideQuote
                 }
-              }
-
-            case '\\' =>
-              if (insideQuote && (i + 1) < concat.length && concat(i + 1) == '"') { // escaped quote
-                i += 2
-              } else {
-                i += 1
               }
 
             case '\n' =>
@@ -266,15 +259,6 @@ object CsvParser {
               } else {
                 i += 1
                 insideQuote = !insideQuote
-              }
-
-            case '\\' =>
-              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
-                val _ = slices += (sliceStart -> i)
-                sliceStart = i + 1
-                i += 2
-              } else {
-                i += 1
               }
 
             case _ =>

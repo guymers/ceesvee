@@ -186,13 +186,13 @@ val TestCsvFiles = Map(
   // https://data.gov.uk/dataset/48c917d5-11a0-429f-a0db-0c5ae6ffa1c8/places-to-visit-in-causeway-coast-and-glens
   "uk-causeway-coast-and-glens.csv" -> (
     "https://ccgbcodni-cbcni.opendata.arcgis.com/datasets/42b6ad70a304442dbdb963974d44b433_0.csv",
-    "ad3b923ddd17a8fb774dc60b8ed2f2a8281f2cda",
+    "5a15f2bf5861b34f985da88b33523f18aba10c08",
   ),
 
   // https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads
   "uk-property-sales-price-paid-2019.csv" -> (
     "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2019.csv",
-    "f0c8da0dad28e849b78e9cd8f17927d83e0bb14c",
+    "7c9cf6b70599b8ad54365171e5343273a5a91b04",
   ),
 )
 

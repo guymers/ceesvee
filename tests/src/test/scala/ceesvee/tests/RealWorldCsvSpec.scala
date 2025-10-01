@@ -35,8 +35,8 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
       val path = Paths.get(getClass.getResource("/csv/uk-causeway-coast-and-glens.csv").getPath)
 
       val expected = UkCausewayCoast(
-        x = BigDecimal("-6.78939818010469"),
-        y = BigDecimal("55.1552073423335"),
+        x = BigDecimal("677156.193266336"),
+        y = BigDecimal("934878.749389788"),
         name = "Hezlett House",
         address = "107 Sea Road, Castlerock, Co. Londonderry",
         town = "Castlerock",
@@ -84,7 +84,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
       assertHeaderTotal("nz-greenhouse-gas-emissions-2019.csv", NZGreenhouseGasEmissions.csvHeader, total)
     }*),
     suite("UK property sales 2019")({
-      val total = 1010985L
+      val total = 1011675L
       assertTotal("uk-property-sales-price-paid-2019.csv", UkPropertySalesPricePaid.decoder, total)
     }*),
   ) @@ TestAspect.timeout(60.seconds) @@ TestAspect.timed
