@@ -22,6 +22,40 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
         assertTrue(lines == List("abc\rdef", "ghi", "jkl")) &&
         assertTrue(state.leftover == "mno")
       },
+      test("trailing double quotes") {
+        val strings = List(
+          "a,\"b\"",
+          ",c,\"d\"\"e\",\"",
+          "\"",
+          "\nfg\"",
+        )
+        val (state, lines) = CsvParser.splitStrings(strings, CsvParser.State.initial)
+        val strings2 = List(
+          "\n\"\"\"",
+          "\n\"hi\"\"",
+        )
+        val (state2, lines2) = CsvParser.splitStrings(strings2, state)
+        val strings3 = List(
+          "j\"",
+          "\nmno",
+        )
+        val (state3, lines3) = CsvParser.splitStrings(strings3, state2)
+        assertTrue(
+          lines == List("""a,"b",c,"d""e","""""),
+          state.insideQuoteIndex == 2,
+          state.leftover == "fg\"",
+        ) &&
+        assertTrue(
+          lines2 == List("fg\"\n\"\"\""),
+          state2.insideQuoteIndex == 0,
+          state2.leftover == "\"hi\"\"",
+        ) &&
+        assertTrue(
+          lines3 == List("\"hi\"\"j\""),
+          state3.insideQuoteIndex == -9,
+          state3.leftover == "mno",
+        )
+      },
       test("quotes and new lines") {
         val strings = List(
           "a\"b\"c\n",
