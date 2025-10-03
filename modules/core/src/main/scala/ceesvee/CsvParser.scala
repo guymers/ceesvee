@@ -139,12 +139,14 @@ object CsvParser {
 
   case class State(
     leftover: String,
-    insideQuote: Boolean,
+    insideQuoteIndex: Int,
+    previousCarriageReturn: Boolean,
   )
   object State {
     val initial: State = State(
       leftover = "",
-      insideQuote = false,
+      insideQuoteIndex = -1,
+      previousCarriageReturn = false,
     )
   }
 
@@ -158,7 +160,8 @@ object CsvParser {
     state: State,
   )(implicit f: Factory[String, C[String]]): (State, C[String]) = {
     val builder = f.newBuilder
-    var insideQuote = state.insideQuote
+    var insideQuoteIndex = state.insideQuoteIndex
+    var previousCarriageReturn = state.previousCarriageReturn
     var leftover = state.leftover
 
     val it = strings.iterator
@@ -168,40 +171,60 @@ object CsvParser {
 
         val concat = leftover.concat(string)
 
-        // assume we have already processed `leftover`,
-        // reprocess the last character in case it was a '"' or '\r'
-        var i = (leftover.length - 1).max(0)
+        var insideQuote = false
+        var i =
+          if (insideQuoteIndex >= 0) insideQuoteIndex
+          else if (previousCarriageReturn) leftover.length - 1
+          else leftover.length
         var sliceStart = 0
 
         while (i < concat.length) {
           (concat(i): @switch) match {
 
             case '"' =>
-              if (insideQuote && (i + 1) < concat.length && concat(i + 1) == '"') { // escaped quote
-                i += 2
-              } else {
-                i += 1
-                if (i < concat.length) {
-                  insideQuote = !insideQuote
+              if (insideQuote) {
+                if ((i + 1) == concat.length) { // last char
+                  i += 1 // not enough information
+                } else {
+                  if (concat(i + 1) == '"') { // escaped quote
+                    i += 2
+                  } else {
+                    insideQuote = false
+                    insideQuoteIndex = -1
+                    i += 1
+                  }
                 }
+              } else {
+                insideQuote = true
+                insideQuoteIndex = i
+                i += 1
               }
 
             case '\n' =>
-              if (!insideQuote) {
-                val _ = builder += concat.substring(sliceStart, i)
+              if (insideQuote) {
+                i += 1
+              } else {
+                val sliceEnd = if (previousCarriageReturn) i - 1 else i
+                val _ = builder += concat.substring(sliceStart, sliceEnd)
                 i += 1
                 sliceStart = i
-              } else {
-                i += 1
               }
 
             case '\r' =>
-              if (!insideQuote && (i + 1) < concat.length && concat(i + 1) == '\n') {
-                val _ = builder += concat.substring(sliceStart, i)
-                i += 2
-                sliceStart = i
-              } else {
+              if (insideQuote) {
                 i += 1
+              } else {
+                if ((i + 1) == concat.length) { // last char
+                  i += 1 // previousCarriageReturn set later
+                } else {
+                  if (concat(i + 1) == '\n') {
+                    val _ = builder += concat.substring(sliceStart, i)
+                    i += 2
+                    sliceStart = i
+                  } else {
+                    i += 1
+                  }
+                }
               }
 
             case _ =>
@@ -209,11 +232,13 @@ object CsvParser {
           }
         }
 
+        insideQuoteIndex = insideQuoteIndex - sliceStart
+        previousCarriageReturn = concat(i - 1) == '\r'
         leftover = concat.substring(sliceStart, concat.length)
       }
     }
 
-    (State(leftover, insideQuote = insideQuote), builder.result())
+    (State(leftover, insideQuoteIndex = insideQuoteIndex, previousCarriageReturn = previousCarriageReturn), builder.result())
   }
 
   /**

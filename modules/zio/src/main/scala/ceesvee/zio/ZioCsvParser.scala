@@ -112,12 +112,12 @@ object ZioCsvParser {
     Ref.make(state).map { stateRef => (chunk: Option[Chunk[String]]) =>
       chunk match {
         case None =>
-          stateRef.getAndSet(State.initial).map { case State(leftover, _) =>
+          stateRef.getAndSet(State.initial).map { case State(leftover, _, _) =>
             if (leftover.isEmpty) Chunk.empty else Chunk(leftover)
           }
 
         case Some(strings) =>
-          stateRef.get.flatMap { case State(leftover, _) =>
+          stateRef.get.flatMap { case State(leftover, _, _) =>
             ZIO.fail(Error.LineTooLong(options.maximumLineLength))
               .when(leftover.length > options.maximumLineLength)
           } *> stateRef.modify(splitStrings(strings, _).swap)
