@@ -9,7 +9,6 @@ import ceesvee.CsvHeader
 import ceesvee.CsvParser
 import ceesvee.CsvReader
 import ceesvee.CsvRecordDecoder
-import zio.Exit
 
 import java.nio.charset.Charset
 

@@ -5,75 +5,14 @@ import zio.ZIO
 import zio.test.ZIOSpecDefault
 import zio.test.assertTrue
 
-object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite with CsvParserLineSuite {
+object CsvParserSpec extends ZIOSpecDefault
+  with CsvParserParserSuite
+  with CsvSplitStringsSuite[CsvParser.State]
+  with CsvParserLineSuite {
 
   override val spec = suite("CsvParser")(
     parserSuite,
-    suite("split strings")(
-      test("trailing new lines") {
-        val strings = List(
-          "abc\r",
-          "def\r",
-          "\nghi\r\n",
-          "jkl",
-          "\nmno",
-        )
-        val (state, lines) = CsvParser.splitStrings(strings, CsvParser.State.initial)
-        assertTrue(lines == List("abc\rdef", "ghi", "jkl")) &&
-        assertTrue(state.leftover == "mno")
-      },
-      test("trailing double quotes") {
-        val strings = List(
-          "a,\"b\"",
-          ",c,\"d\"\"e\",\"",
-          "\"",
-          "\nfg\"",
-        )
-        val (state, lines) = CsvParser.splitStrings(strings, CsvParser.State.initial)
-        val strings2 = List(
-          "\n\"\"\"",
-          "\n\"hi\"\"",
-        )
-        val (state2, lines2) = CsvParser.splitStrings(strings2, state)
-        val strings3 = List(
-          "j\"",
-          "\nmno",
-        )
-        val (state3, lines3) = CsvParser.splitStrings(strings3, state2)
-        assertTrue(
-          lines == List("""a,"b",c,"d""e","""""),
-          state.insideQuoteIndex == 2,
-          state.leftover == "fg\"",
-        ) &&
-        assertTrue(
-          lines2 == List("fg\"\n\"\"\""),
-          state2.insideQuoteIndex == 0,
-          state2.leftover == "\"hi\"\"",
-        ) &&
-        assertTrue(
-          lines3 == List("\"hi\"\"j\""),
-          state3.insideQuoteIndex == -9,
-          state3.leftover == "mno",
-        )
-      },
-      test("quotes and new lines") {
-        val strings = List(
-          "a\"b\"c\n",
-          "d\"\ne\r\nf\"\n",
-          "g\"hi\r\"",
-          "\"jkl\"",
-          "\nnmno",
-        )
-        val (state, lines) = CsvParser.splitStrings(strings, CsvParser.State.initial)
-        assertTrue(lines == List(
-          "a\"b\"c",
-          "d\"\ne\r\nf\"",
-          "g\"hi\r\"\"jkl\"",
-        )) &&
-        assertTrue(state.leftover == "nmno")
-      },
-      // TODO property based tests
-    ),
+    splitStringsSuite,
     parseLineSuite,
   )
 
@@ -86,6 +25,12 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite with CsvPa
   override protected def parseLine(line: String, options: CsvParser.Options) = {
     CsvParser.parseLine[List](line, options)
   }
+
+  override protected def splitStrings(strings: List[String], state: CsvParser.State) = CsvParser.splitStrings(strings, state)
+
+  override protected def initialState = CsvParser.State.initial
+  override protected def stateLeftover(s: CsvParser.State) = s.leftover
+  override protected def stateInsideQuoteIndex(s: CsvParser.State) = s.insideQuoteIndex
 }
 
 trait CsvParserParserSuite { self: ZIOSpecDefault =>
@@ -165,6 +110,99 @@ trait CsvParserParserSuite { self: ZIOSpecDefault =>
       } :: Nil
     }),
   )
+}
+
+trait CsvSplitStringsSuite[S] { self: ZIOSpecDefault =>
+
+  protected def splitStrings(strings: List[String], state: S): (S, List[String])
+
+  protected def initialState: S
+  protected def stateLeftover(s: S): String
+  protected def stateInsideQuoteIndex(s: S): Int
+
+  protected def splitStringsSuite = {
+    suite("split strings")(
+      test("trailing new lines") {
+        val strings = List(
+          "abc\r",
+          "def\r",
+          "\nghi\r\n",
+          "jkl",
+          "\nmno",
+        )
+        val (state, lines) = splitStrings(strings, initialState)
+        assertTrue(lines == List("abc\rdef", "ghi", "jkl")) &&
+        assertTrue(stateLeftover(state) == "mno")
+      },
+      test("trailing new lines aligned to vector boundary") {
+        val strings = List(
+          "012345678901234567890123456789012345678901234567890123456789abc\r",
+          "012345678901234567890123456789012345678901234567890123456789abc\r",
+          "\n012345678901234567890123456789012345678901234567890123456789ab\n",
+          "012345678901234567890123456789012345678901234567890123456789abcd",
+          "\nmno",
+        )
+        val (state, lines) = splitStrings(strings, initialState)
+        assertTrue(lines == List(
+          "012345678901234567890123456789012345678901234567890123456789abc\r012345678901234567890123456789012345678901234567890123456789abc",
+          "012345678901234567890123456789012345678901234567890123456789ab",
+          "012345678901234567890123456789012345678901234567890123456789abcd",
+        )) &&
+        assertTrue(stateLeftover(state) == "mno")
+      },
+      test("trailing double quotes") {
+        val strings = List(
+          "a,\"b\"",
+          ",c,\"d\"\"e\",\"",
+          "\"",
+          "\nfg\"",
+        )
+        val (state, lines) = splitStrings(strings, initialState)
+        val strings2 = List(
+          "\n\"\"\"",
+          "\n\"hi\"\"",
+        )
+        val (state2, lines2) = splitStrings(strings2, state)
+        val strings3 = List(
+          "j\"",
+          "\nmno",
+        )
+        val (state3, lines3) = splitStrings(strings3, state2)
+        assertTrue(
+          lines == List("""a,"b",c,"d""e","""""),
+          stateInsideQuoteIndex(state) == 2,
+          stateLeftover(state) == "fg\"",
+        ) &&
+        assertTrue(
+          lines2 == List("fg\"\n\"\"\""),
+          stateInsideQuoteIndex(state2) == 0,
+          stateLeftover(state2) == "\"hi\"\"",
+        ) &&
+        assertTrue(
+          lines3 == List("\"hi\"\"j\""),
+          stateInsideQuoteIndex(state3) == -9,
+          stateLeftover(state3) == "mno",
+        )
+      },
+      test("quotes and new lines") {
+        val strings = List(
+          "a\"b\"c\n",
+          "d\"\ne\r\nf\"\n",
+          "g\"hi\r\"",
+          "\"jkl\"",
+          "\nnmno",
+        )
+        val (state, lines) = splitStrings(strings, initialState)
+        assertTrue(lines == List(
+          "a\"b\"c",
+          "d\"\ne\r\nf\"",
+          "g\"hi\r\"\"jkl\"",
+        )) &&
+        assertTrue(stateLeftover(state) == "nmno")
+      },
+      // TODO property based tests
+    )
+  }
 }
 
 trait CsvParserLineSuite { self: ZIOSpecDefault =>

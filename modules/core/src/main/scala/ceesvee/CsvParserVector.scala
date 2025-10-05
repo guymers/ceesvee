@@ -1,6 +1,9 @@
 package ceesvee
 
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 import jdk.incubator.vector.ByteVector
 import scala.annotation.tailrec
 import scala.collection.Factory
@@ -72,11 +75,15 @@ object CsvParserVector {
   private[ceesvee] class State(
     val leftover: Array[Byte],
     val insideQuote: Boolean,
+//    val insideQuoteIndex: Int,
+    val previousCarriageReturn: Boolean,
   )
   private[ceesvee] object State {
     val initial: State = new State(
       leftover = Array.emptyByteArray,
       insideQuote = false,
+//      insideQuoteIndex = -1,
+      previousCarriageReturn = false,
     )
   }
 
@@ -94,6 +101,7 @@ object CsvParserVector {
 
     val builder = f.newBuilder
     var insideQuote = state.insideQuote
+    var previousCarriageReturn = state.previousCarriageReturn
     var sliceStart = 0
     var prevNLChars = 0L
 
@@ -113,8 +121,9 @@ object CsvParserVector {
       // set all bits between quotes
       var quoteMask = quoteChars
       var quoteStart = if (insideQuote) 0 else -1
+      // https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
       var quoteMaskBitsSet = quoteMask
-      while (quoteMaskBitsSet > 0) { // https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
+      while (java.lang.Long.bitCount(quoteMaskBitsSet) > 0) {
         val r = java.lang.Long.numberOfTrailingZeros(quoteMaskBitsSet)
         quoteMaskBitsSet = quoteMaskBitsSet ^ java.lang.Long.lowestOneBit(quoteMaskBitsSet)
 
@@ -139,13 +148,24 @@ object CsvParserVector {
       insideQuote = java.lang.Long.highestOneBit(quoteMask) == Long.MinValue
 
       val crChars = vector.eq(CarriageReturn).toLong
-      val nlChars = vector.eq(NewLine).toLong
-      val crnlChars = crChars | nlChars
       val crIgnoringWithinQuotes = crChars & ~(crChars & quoteMask)
-
-      val crnlIgnoringWithinQuotes = crnlChars & ~(crnlChars & quoteMask)
+      val nlChars = vector.eq(NewLine).toLong
+      val nlIgnoringWithinQuotes = nlChars & ~(nlChars & quoteMask)
       val crCharsBeforeNl = crIgnoringWithinQuotes & ((nlChars >> 1) | (prevNLChars << 63))
       prevNLChars = nlChars
+
+      def printLong(l: Long) = java.lang.Long.toBinaryString(l) /*.padTo(64, '0')*/ .reverse
+      println(("previousCarriageReturn ", previousCarriageReturn))
+      println(("crChars ", printLong(crChars)))
+      println(("nlChars ", printLong(nlChars)))
+      println(("crCharsB", printLong(crCharsBeforeNl)))
+
+      /*
+             a"b"c|d"|e\|f"|g"hi\""jkl"|nmno
+    crChars  0000000000100000000100000000000
+    nlChars  0000010010010010000000000010000
+    crnlIgn  0000010000000010000000000010000
+       */
 
       /* \ = \r, | = \n
           a\|b\c|"d\|e"|f
@@ -160,18 +180,40 @@ object CsvParserVector {
           010000000000000 = crCharsBeforeNl
        */
 
-      var crnlIgnoringWithinQuotesBitsSet = crnlIgnoringWithinQuotes
-      while (crnlIgnoringWithinQuotesBitsSet > 0) {
-        val r = java.lang.Long.numberOfTrailingZeros(crnlIgnoringWithinQuotesBitsSet)
-        crnlIgnoringWithinQuotesBitsSet = crnlIgnoringWithinQuotesBitsSet ^ java.lang.Long.lowestOneBit(crnlIgnoringWithinQuotesBitsSet)
+      def ignorePreviousCarriageReturn =
+        previousCarriageReturn &&
+        java.lang.Long.numberOfTrailingZeros(nlChars) == 0 &&
+        java.lang.Long.numberOfTrailingZeros(nlIgnoringWithinQuotes) == 0
+
+      var removeCrNlBitsSet = nlIgnoringWithinQuotes | crCharsBeforeNl
+      println((
+        "removeCrNlBitsSet",
+        printLong(removeCrNlBitsSet),
+        java.lang.Long.bitCount(removeCrNlBitsSet),
+        java.lang.Long.lowestOneBit(removeCrNlBitsSet),
+        java.lang.Long.numberOfTrailingZeros(removeCrNlBitsSet),
+        removeCrNlBitsSet,
+        removeCrNlBitsSet > 0,
+      ))
+      while (java.lang.Long.bitCount(removeCrNlBitsSet) > 0) {
+        val r = java.lang.Long.numberOfTrailingZeros(removeCrNlBitsSet)
+        removeCrNlBitsSet = removeCrNlBitsSet ^ java.lang.Long.lowestOneBit(removeCrNlBitsSet)
+        println(("r", r))
 
         val sliceTo = i + r
-        val leftover = if (sliceStart == 0) state.leftover else Array.emptyByteArray
-        val _ = builder += leftover ++ arraySlice(bytes, sliceStart, sliceTo, i, crCharsBeforeNl)
+        if (sliceStart < sliceTo) {
+          val leftover = if (sliceStart == 0) state.leftover else Array.emptyByteArray
+          val to = if (r == 0 && ignorePreviousCarriageReturn) sliceTo - 1 else sliceTo
+          println(("slice", sliceStart, to, i))
+          val _ = builder += leftover ++ arraySlice(bytes, sliceStart, to, i, 0)
+        }
 
         sliceStart = sliceTo + 1
       }
 
+      previousCarriageReturn =
+        java.lang.Long.numberOfLeadingZeros(crChars) == 0 &&
+        java.lang.Long.numberOfLeadingZeros(crIgnoringWithinQuotes) == 0
       i = i + ByteVectorSpecies.length
     }
 
@@ -181,7 +223,14 @@ object CsvParserVector {
       bytes.slice(sliceStart, bytes.length)
     }
 
-    (new State(leftover, insideQuote = insideQuote), builder.result())
+    (
+      new State(
+        leftover,
+        insideQuote = insideQuote,
+        previousCarriageReturn = previousCarriageReturn,
+      ),
+      builder.result(),
+    )
   }
 
   /**
