@@ -22,6 +22,22 @@ object CsvParserSpec extends ZIOSpecDefault with CsvParserParserSuite {
         assertTrue(lines == List("abc\rdef", "ghi", "jkl")) &&
         assertTrue(state.leftover == "mno")
       },
+      test("trailing new lines aligned to vector boundary") {
+        val strings = List(
+          "012345678901234567890123456789012345678901234567890123456789abc\r",
+          "012345678901234567890123456789012345678901234567890123456789abc\r",
+          "\n012345678901234567890123456789012345678901234567890123456789ab\n",
+          "012345678901234567890123456789012345678901234567890123456789abcd",
+          "\nmno",
+        )
+        val (state, lines) = CsvParser.splitStrings(strings, CsvParser.State.initial)
+        assertTrue(lines == List(
+          "012345678901234567890123456789012345678901234567890123456789abc\r012345678901234567890123456789012345678901234567890123456789abc",
+          "012345678901234567890123456789012345678901234567890123456789ab",
+          "012345678901234567890123456789012345678901234567890123456789abcd",
+        )) &&
+        assertTrue(state.leftover == "mno")
+      },
       test("trailing double quotes") {
         val strings = List(
           "a,\"b\"",
