@@ -208,8 +208,7 @@ object CsvParser {
               if (insideQuote) {
                 i += 1
               } else {
-                val sliceEnd = if (i == 0 && previousCarriageReturn) -1 else i
-                val _ = builder += concat.substring(sliceStart, sliceEnd)
+                val _ = builder += concat.substring(sliceStart, i)
                 i += 1
                 sliceStart = i
               }

@@ -1,9 +1,6 @@
 package ceesvee
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets
 import jdk.incubator.vector.ByteVector
 import scala.annotation.tailrec
 import scala.collection.Factory
@@ -265,7 +262,7 @@ object CsvParserVector {
       var quoteMask = quoteChars
       var quoteStart = if (insideQuote) 0 else -1
       var quoteMaskBitsSet = quoteMask
-      while (quoteMaskBitsSet > 0) {
+      while (java.lang.Long.bitCount(quoteMaskBitsSet) > 0) {
         val r = java.lang.Long.numberOfTrailingZeros(quoteMaskBitsSet)
         quoteMaskBitsSet = quoteMaskBitsSet ^ java.lang.Long.lowestOneBit(quoteMaskBitsSet)
 
@@ -300,7 +297,7 @@ object CsvParserVector {
        */
 
       var commaIgnoringWithinQuotesBitsSet = commaIgnoringWithinQuotes
-      while (commaIgnoringWithinQuotesBitsSet > 0) {
+      while (java.lang.Long.bitCount(commaIgnoringWithinQuotesBitsSet) > 0) {
         val r = java.lang.Long.numberOfTrailingZeros(commaIgnoringWithinQuotesBitsSet)
         commaIgnoringWithinQuotesBitsSet = commaIgnoringWithinQuotesBitsSet ^ java.lang.Long.lowestOneBit(commaIgnoringWithinQuotesBitsSet)
 
@@ -357,7 +354,7 @@ object CsvParserVector {
     var ignoreCount = 0
 
     var ignoreBitsSet = ignore
-    while (ignoreBitsSet > 0) {
+    while (java.lang.Long.bitCount(ignoreBitsSet) > 0) {
       val i = java.lang.Long.numberOfTrailingZeros(ignoreBitsSet) + offset
       ignoreBitsSet = ignoreBitsSet ^ java.lang.Long.lowestOneBit(ignoreBitsSet)
 
@@ -385,7 +382,7 @@ object CsvParserVector {
         var destPosition = 0
 
         var ignoreBitsSet2 = ignore
-        while (ignoreBitsSet2 > 0) {
+        while (java.lang.Long.bitCount(ignoreBitsSet2) > 0) {
           val i = java.lang.Long.numberOfTrailingZeros(ignoreBitsSet2) + offset
           ignoreBitsSet2 = ignoreBitsSet2 ^ java.lang.Long.lowestOneBit(ignoreBitsSet2)
 
