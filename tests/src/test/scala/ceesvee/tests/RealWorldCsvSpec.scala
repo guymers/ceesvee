@@ -79,7 +79,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
           }
         },
         test("zio vector") {
-          val stream = readFileZio(path)
+          val stream = readFileZio(path).drop(3) // UTF8 BOM
           ZIO.scoped[Any] {
             ceesvee.zio.ZioCsvReaderVector.decodeWithHeader(stream, UkCausewayCoast.csvHeader, charset, options).flatMap { s =>
               s.runCollect.mapError(Left(_))

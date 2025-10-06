@@ -30,7 +30,6 @@ object CsvParserSpec extends ZIOSpecDefault
 
   override protected def initialState = CsvParser.State.initial
   override protected def stateLeftover(s: CsvParser.State) = s.leftover
-  override protected def stateInsideQuoteIndex(s: CsvParser.State) = s.insideQuoteIndex
 }
 
 trait CsvParserParserSuite { self: ZIOSpecDefault =>
@@ -118,7 +117,6 @@ trait CsvSplitStringsSuite[S] { self: ZIOSpecDefault =>
 
   protected def initialState: S
   protected def stateLeftover(s: S): String
-  protected def stateInsideQuoteIndex(s: S): Int
 
   protected def splitStringsSuite = {
     suite("split strings")(
@@ -170,19 +168,32 @@ trait CsvSplitStringsSuite[S] { self: ZIOSpecDefault =>
         val (state3, lines3) = splitStrings(strings3, state2)
         assertTrue(
           lines == List("""a,"b",c,"d""e","""""),
-          stateInsideQuoteIndex(state) == 2,
           stateLeftover(state) == "fg\"",
         ) &&
         assertTrue(
           lines2 == List("fg\"\n\"\"\""),
-          stateInsideQuoteIndex(state2) == 0,
           stateLeftover(state2) == "\"hi\"\"",
         ) &&
         assertTrue(
           lines3 == List("\"hi\"\"j\""),
-          stateInsideQuoteIndex(state3) == -9,
           stateLeftover(state3) == "mno",
         )
+      },
+      test("trailing double quotes aligned to vector boundary") {
+        val strings = List(
+          "\"012345678901234567890123456789012345678901234567890123456789ab\"",
+          "\n\"012345678901234567890123456789012345678901234567890123456789\n\"",
+          "\"\n012345678901234567890123456789012345678901234567890123456789a\"",
+          "\n\"012345678901234567890123456789012345678901234567890123456789\"\"",
+          "\n0123456789\"\nmno",
+        )
+        val (state, lines) = splitStrings(strings, initialState)
+        assertTrue(lines == List(
+          "\"012345678901234567890123456789012345678901234567890123456789ab\"",
+          "\"012345678901234567890123456789012345678901234567890123456789\n\"\"\n012345678901234567890123456789012345678901234567890123456789a\"",
+          "\"012345678901234567890123456789012345678901234567890123456789\"\"\n0123456789\"",
+        )) &&
+        assertTrue(stateLeftover(state) == "mno")
       },
       test("quotes and new lines") {
         val strings = List(
