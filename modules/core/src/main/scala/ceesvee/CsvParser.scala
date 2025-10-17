@@ -82,11 +82,19 @@ object CsvParser {
 
   def ignoreLine(line: String, options: Options): Boolean = {
     val l = options.trim.strip(line)
+    ignoreTrimmedLine(l, options)
+  }
 
-    def isBlank = options.skipBlankRows && l.isEmpty
-    def isComment = options.commentPrefix.filter(_.nonEmpty).exists(l.startsWith(_))
+  private[ceesvee] def ignoreTrimmedLine(line: String, options: Options): Boolean = {
+    isBlank(line, options) || isComment(line, options)
+  }
 
-    isBlank || isComment
+  private def isBlank(line: String, options: Options): Boolean = {
+    options.skipBlankRows && line.isEmpty
+  }
+
+  private def isComment(line: String, options: Options): Boolean = {
+    options.commentPrefix.filter(_.nonEmpty).exists(line.startsWith(_))
   }
 
   /**
@@ -241,11 +249,35 @@ object CsvParser {
     (State(leftover, insideQuoteIndex = insideQuoteIndex, previousCarriageReturn = previousCarriageReturn), builder.result())
   }
 
+  private case class Slice(start: Int, end: Int)
+  private object Slice {
+    @SuppressWarnings(Array(
+      "org.wartremover.warts.MutableDataStructures",
+      "org.wartremover.warts.NonUnitStatements",
+      "org.wartremover.warts.SeqApply",
+      "org.wartremover.warts.Var",
+      "org.wartremover.warts.While",
+    ))
+    def slice(slices: mutable.ArrayBuffer[Slice], line: String) = {
+      val sb = new mutable.StringBuilder
+      val n = slices.length
+      var i = 0
+      while (i < n) {
+        val slice = slices(i)
+        sb append line.substring(slice.start, slice.end)
+        i = i + 1
+      }
+      slices.clear()
+      sb.result()
+    }
+  }
+
   /**
    * Parse a line into a collection of CSV fields.
    */
   @SuppressWarnings(Array(
     "org.wartremover.warts.MutableDataStructures",
+    "org.wartremover.warts.NonUnitStatements",
     "org.wartremover.warts.Var",
     "org.wartremover.warts.While",
   ))
@@ -255,69 +287,58 @@ object CsvParser {
   )(implicit f: Factory[String, C[String]]): C[String] = {
     val fields = f.newBuilder
 
-    object ParseLine {
+    val slices = mutable.ArrayBuffer.empty[Slice]
+    var sliceStart = 0
 
-      private val slices = mutable.ListBuffer.empty[(Int, Int)]
-      private var sliceStart = 0
+    var i = 0
+    var insideQuote = false
 
-      private var i = 0
-      private var insideQuote = false
+    while (i < line.length) {
+      (line(i): @switch) match {
 
-      def run(): Unit = {
-        while (i < line.length) {
-          (line(i): @switch) match {
-
-            case ',' =>
-              if (!insideQuote) {
-                process()
-                i += 1
-                sliceStart = i
-              } else {
-                i += 1
-              }
-
-            case '"' =>
-              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
-                val _ = slices += (sliceStart -> i)
-                sliceStart = i + 1
-                i += 2
-              } else {
-                i += 1
-                insideQuote = !insideQuote
-              }
-
-            case _ =>
-              i += 1
-          }
-        }
-
-        process()
-      }
-
-      private def process(): Unit = {
-        val sb = new mutable.StringBuilder
-        (slices += (sliceStart -> i)).foreach { case (start, end) =>
-          sb append line.substring(start, end)
-        }
-        @SuppressWarnings(Array("org.wartremover.warts.ToString"))
-        val str = sb.toString
-
-        val _ = fields += {
-          // always ignore whitespace around a quoted cell
-          val trimmed = Options.Trim.True.strip(str)
-
-          if (trimmed.length >= 2 && trimmed.headOption.contains('"') && trimmed.lastOption.contains('"')) {
-            trimmed.substring(1, trimmed.length - 1)
+        case ',' =>
+          if (!insideQuote) {
+            {
+              slices.addOne(Slice(sliceStart, i))
+              fields addOne trimString(options, Slice.slice(slices, line))
+            }
+            i += 1
+            sliceStart = i
           } else {
-            options.trim.strip(str)
+            i += 1
           }
-        }
-        slices.clear()
+
+        case '"' =>
+          if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
+            slices.addOne(Slice(sliceStart, i))
+            sliceStart = i + 1
+            i += 2
+          } else {
+            i += 1
+            insideQuote = !insideQuote
+          }
+
+        case _ =>
+          i += 1
       }
     }
-    ParseLine.run()
+
+    {
+      slices.addOne(Slice(sliceStart, i))
+      fields addOne trimString(options, Slice.slice(slices, line))
+    }
 
     fields.result()
   }
 
+  private def trimString(options: Options, str: String) = {
+    // always ignore whitespace around a quoted cell
+    val trimmed = Options.Trim.True.strip(str)
+
+    if (trimmed.length >= 2 && trimmed.charAt(0) == '"' && trimmed.charAt(trimmed.length - 1) == '"') {
+      trimmed.substring(1, trimmed.length - 1)
+    } else {
+      options.trim.strip(str)
+    }
+  }
 }
