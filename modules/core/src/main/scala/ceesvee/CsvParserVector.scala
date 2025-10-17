@@ -1,8 +1,8 @@
 package ceesvee
 
 import java.nio.charset.Charset
-import java.util.regex.Pattern
 import jdk.incubator.vector.ByteVector
+import jdk.incubator.vector.VectorMask
 import scala.annotation.tailrec
 import scala.collection.Factory
 import scala.collection.mutable
@@ -111,21 +111,20 @@ object CsvParserVector {
         ByteVector.fromArray(ByteVectorSpecies, bytes, i)
       }
 
-      val quoteChars = vector.eq(Quote).toLong
+      val quotes = vector.eq(Quote)
+      var mask = quotes
+      var betweenQuotes = 0L
 
       // set all bits between quotes
-      var quoteMask = quoteChars
       var quoteStart = if (insideQuote) 0 else -1
-      // https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
-      var quoteMaskBitsSet = quoteMask
-      while (java.lang.Long.bitCount(quoteMaskBitsSet) > 0) {
-        val r = java.lang.Long.numberOfTrailingZeros(quoteMaskBitsSet)
-        quoteMaskBitsSet = quoteMaskBitsSet ^ java.lang.Long.lowestOneBit(quoteMaskBitsSet)
+      while (mask.anyTrue()) {
+        val r = mask.firstTrue()
+        mask = mask.xor(VectorMask.fromLong(vector.species(), 1L << r))
 
         if (quoteStart >= 0) {
           var j = r - 1
           while (j >= quoteStart) {
-            quoteMask = quoteMask | (1L << j)
+            betweenQuotes = betweenQuotes | (1L << j)
             j = j - 1
           }
           quoteStart = -1
@@ -136,17 +135,18 @@ object CsvParserVector {
       if (quoteStart >= 0) {
         var j = ByteVectorSpecies.length - 1
         while (j > quoteStart) {
-          quoteMask = quoteMask | (1L << j)
+          betweenQuotes = betweenQuotes | (1L << j)
           j = j - 1
         }
       }
-      val numQuoteChars = java.lang.Long.bitCount(quoteChars)
-      insideQuote = (numQuoteChars + (if (insideQuote) 1 else 0)) % 2 == 1
 
-      val crChars = vector.eq(CarriageReturn).toLong
-      val crIgnoringWithinQuotes = crChars & ~(crChars & quoteMask)
-      val nlChars = vector.eq(NewLine).toLong
-      val nlIgnoringWithinQuotes = nlChars & ~(nlChars & quoteMask)
+      val quoteMask = quotes.or(VectorMask.fromLong(vector.species(), betweenQuotes))
+      insideQuote = (quotes.trueCount() + (if (insideQuote) 1 else 0)) % 2 == 1
+
+      val crChars = vector.eq(CarriageReturn)
+      val crIgnoringWithinQuotes = crChars.andNot(crChars.and(quoteMask))
+      val nlChars = vector.eq(NewLine)
+      val nlIgnoringWithinQuotes = nlChars.andNot(nlChars.and(quoteMask))
 
       /* \ = \r, | = \n
           a\|b\c|"d\|e"|f
@@ -158,14 +158,14 @@ object CsvParserVector {
           001000100000010 = nlIgnoringWithinQuotes
        */
 
-      var removeCrNlBitsSet = nlIgnoringWithinQuotes
-      while (java.lang.Long.bitCount(removeCrNlBitsSet) > 0) {
-        val r = java.lang.Long.numberOfTrailingZeros(removeCrNlBitsSet)
-        removeCrNlBitsSet = removeCrNlBitsSet ^ java.lang.Long.lowestOneBit(removeCrNlBitsSet)
+      var nlIgnoringWithinQuotesBitSet = nlIgnoringWithinQuotes.toLong
+      while (java.lang.Long.bitCount(nlIgnoringWithinQuotesBitSet) > 0) {
+        val r = java.lang.Long.numberOfTrailingZeros(nlIgnoringWithinQuotesBitSet)
+        nlIgnoringWithinQuotesBitSet = nlIgnoringWithinQuotesBitSet ^ java.lang.Long.lowestOneBit(nlIgnoringWithinQuotesBitSet)
 
         val isPrevCr =
           (r == 0 && prevCarriageReturn) ||
-          (crIgnoringWithinQuotes & (1L << (r - 1))) == 1L << (r - 1)
+          (r > 0 && crIgnoringWithinQuotes.laneIsSet(r - 1))
 
         val sliceTo = i + r
         val leftover = if (sliceStart == 0) state.leftover else Array.emptyByteArray
@@ -175,7 +175,7 @@ object CsvParserVector {
         sliceStart = sliceTo + 1
       }
 
-      prevCarriageReturn = java.lang.Long.numberOfLeadingZeros(crIgnoringWithinQuotes) == 0
+      prevCarriageReturn = crIgnoringWithinQuotes.laneIsSet(vector.length() - 1)
       i = i + ByteVectorSpecies.length
     }
 
@@ -214,20 +214,20 @@ object CsvParserVector {
         ByteVector.fromArray(ByteVectorSpecies, bytes, i)
       }
 
-      val quoteChars = vector.eq(Quote).toLong
+      val quotes = vector.eq(Quote)
+      var mask = quotes
+      var betweenQuotes = 0L
 
       // set all bits between quotes
-      var quoteMask = quoteChars
       var quoteStart = if (insideQuote) 0 else -1
-      var quoteMaskBitsSet = quoteMask
-      while (java.lang.Long.bitCount(quoteMaskBitsSet) > 0) {
-        val r = java.lang.Long.numberOfTrailingZeros(quoteMaskBitsSet)
-        quoteMaskBitsSet = quoteMaskBitsSet ^ java.lang.Long.lowestOneBit(quoteMaskBitsSet)
+      while (mask.anyTrue()) {
+        val r = mask.firstTrue()
+        mask = mask.xor(VectorMask.fromLong(vector.species(), 1L << r))
 
         if (quoteStart >= 0) {
           var j = r - 1
           while (j >= quoteStart) {
-            quoteMask = quoteMask | (1L << j)
+            betweenQuotes = betweenQuotes | (1L << j)
             j = j - 1
           }
           quoteStart = -1
@@ -238,15 +238,16 @@ object CsvParserVector {
       if (quoteStart >= 0) {
         var j = ByteVectorSpecies.length - 1
         while (j > quoteStart) {
-          quoteMask = quoteMask | (1L << j)
+          betweenQuotes = betweenQuotes | (1L << j)
           j = j - 1
         }
       }
-      val numQuoteChars = java.lang.Long.bitCount(quoteChars)
-      insideQuote = (numQuoteChars + (if (insideQuote) 1 else 0)) % 2 == 1
 
-      val commaChars = vector.eq(Comma).toLong
-      val commaIgnoringWithinQuotes = commaChars & ~(commaChars & quoteMask)
+      val quoteMask = quotes.or(VectorMask.fromLong(vector.species(), betweenQuotes))
+      insideQuote = (quotes.trueCount() + (if (insideQuote) 1 else 0)) % 2 == 1
+
+      val commaChars = vector.eq(Comma)
+      val commaIgnoringWithinQuotes = commaChars.andNot(commaChars.and(quoteMask))
 
       /* | = \n
           a,"b""c","d,e","",f
@@ -255,16 +256,16 @@ object CsvParserVector {
           0100000010000010010 = commaIgnoringWithinQuotes
        */
 
-      var commaIgnoringWithinQuotesBitsSet = commaIgnoringWithinQuotes
-      while (java.lang.Long.bitCount(commaIgnoringWithinQuotesBitsSet) > 0) {
-        val r = java.lang.Long.numberOfTrailingZeros(commaIgnoringWithinQuotesBitsSet)
-        commaIgnoringWithinQuotesBitsSet = commaIgnoringWithinQuotesBitsSet ^ java.lang.Long.lowestOneBit(commaIgnoringWithinQuotesBitsSet)
+      var commaIgnoringWithinQuotesBitSet = commaIgnoringWithinQuotes.toLong
+      while (java.lang.Long.bitCount(commaIgnoringWithinQuotesBitSet) > 0) {
+        val r = java.lang.Long.numberOfTrailingZeros(commaIgnoringWithinQuotesBitSet)
+        commaIgnoringWithinQuotesBitSet = commaIgnoringWithinQuotesBitSet ^ java.lang.Long.lowestOneBit(commaIgnoringWithinQuotesBitSet)
 
         val sliceTo = i + r
         val str = handleField(arraySlice(bytes, sliceStart, sliceTo, i, 0), charset, options)
         if (builderEmpty && ignoreTrimmedLine(str, options)) {
           i = bytes.length
-          commaIgnoringWithinQuotesBitsSet = 0
+          commaIgnoringWithinQuotesBitSet = 0
         } else {
           val _ = builder += str
           builderEmpty = false

@@ -26,7 +26,7 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-encoding", "UTF-8",
     "-feature",
-    "-release", "17",
+    "-release", "21",
     "-unchecked",
   ),
   scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {

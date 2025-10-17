@@ -12,6 +12,11 @@ ParserBenchmark.scalaCsv       avgt   10  761.886 ± 2.132  us/op
 ParserBenchmark.univocity      avgt   10  194.973 ± 1.283  us/op
 ```
 
+[info] ParserBenchmark.ceesvee        avgt   10  300.746 ± 1.621  us/op
+[info] ParserBenchmark.ceesveeVector  avgt   10  130.967 ± 0.401  us/op
+[info] ParserBenchmark.scalaCsv       avgt   10  739.959 ± 1.924  us/op
+[info] ParserBenchmark.univocity      avgt   10  198.496 ± 0.393  us/op
+
 
 `benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.DecoderBenchmark`
 
