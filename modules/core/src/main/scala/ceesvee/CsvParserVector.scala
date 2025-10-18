@@ -249,7 +249,7 @@ object CsvParserVector {
       val commaChars = vector.eq(Comma)
       val commaIgnoringWithinQuotes = commaChars.andNot(commaChars.and(quoteMask))
 
-      /* | = \n
+      /*
           a,"b""c","d,e","",f
           0010110101000101100 = quoteChars
           0100000010010010010 = commaChars
@@ -295,15 +295,7 @@ object CsvParserVector {
 
   private def handleField(bytes: Array[Byte], charset: Charset, options: Options) = {
     val str = new String(bytes, charset)
-    // always ignore whitespace around a quoted cell
-    val trimmed = Options.Trim.True.strip(str)
-
-    val s = if (trimmed.length >= 2 && trimmed(0) == '"' && trimmed(trimmed.length - 1) == '"') {
-      trimmed.substring(1, trimmed.length - 1)
-    } else {
-      options.trim.strip(str)
-    }
-
+    val s = CsvParser.trimString(options, str)
     s.replace("\"\"", "\"")
   }
 
