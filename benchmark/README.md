@@ -22,6 +22,7 @@ ParserBenchmark.scalaCsv       avgt   10   780.945 ±  2.340  us/op
 ParserBenchmark.univocity      avgt   10   204.178 ±  1.702  us/op
 ```
 
+
 `benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.DecoderBenchmark`
 
 AMD Ryzen 9 9950X
