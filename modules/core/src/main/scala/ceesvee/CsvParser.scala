@@ -86,10 +86,15 @@ object CsvParser {
   }
 
   private[ceesvee] def ignoreTrimmedLine(line: String, options: Options): Boolean = {
-    def isBlank = options.skipBlankRows && line.isEmpty
-    def isComment = options.commentPrefix.filter(_.nonEmpty).exists(line.startsWith(_))
+    isBlank(line, options) || isComment(line, options)
+  }
 
-    isBlank || isComment
+  private def isBlank(line: String, options: Options): Boolean = {
+    options.skipBlankRows && line.isEmpty
+  }
+
+  private def isComment(line: String, options: Options): Boolean = {
+    options.commentPrefix.filter(_.nonEmpty).exists(line.startsWith(_))
   }
 
   /**
@@ -244,13 +249,23 @@ object CsvParser {
     (State(leftover, insideQuoteIndex = insideQuoteIndex, previousCarriageReturn = previousCarriageReturn), builder.result())
   }
 
-  private case class Range(start: Int, end: Int)
-  private object Range {
-    @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))
-    def slice(slices: mutable.ListBuffer[Range], line: String) = {
+  private case class Slice(start: Int, end: Int)
+  private object Slice {
+    @SuppressWarnings(Array(
+      "org.wartremover.warts.MutableDataStructures",
+      "org.wartremover.warts.NonUnitStatements",
+      "org.wartremover.warts.SeqApply",
+      "org.wartremover.warts.Var",
+      "org.wartremover.warts.While",
+    ))
+    def slice(slices: mutable.ArrayBuffer[Slice], line: String) = {
       val sb = new mutable.StringBuilder
-      slices.foreach { t =>
-        sb append line.substring(t.start, t.end)
+      val n = slices.length
+      var i = 0
+      while (i < n) {
+        val slice = slices(i)
+        sb append line.substring(slice.start, slice.end)
+        i = i + 1
       }
       slices.clear()
       sb.result()
@@ -262,6 +277,7 @@ object CsvParser {
    */
   @SuppressWarnings(Array(
     "org.wartremover.warts.MutableDataStructures",
+    "org.wartremover.warts.NonUnitStatements",
     "org.wartremover.warts.Var",
     "org.wartremover.warts.While",
   ))
@@ -271,7 +287,7 @@ object CsvParser {
   )(implicit f: Factory[String, C[String]]): C[String] = {
     val fields = f.newBuilder
 
-    val slices = mutable.ListBuffer.empty[Range]
+    val slices = mutable.ArrayBuffer.empty[Slice]
     var sliceStart = 0
 
     var i = 0
@@ -283,8 +299,8 @@ object CsvParser {
         case ',' =>
           if (!insideQuote) {
             {
-              val _ = slices.addOne(Range(sliceStart, i))
-              val _ = fields += trimString(options, Range.slice(slices, line))
+              slices.addOne(Slice(sliceStart, i))
+              fields addOne trimString(options, Slice.slice(slices, line))
             }
             i += 1
             sliceStart = i
@@ -294,7 +310,7 @@ object CsvParser {
 
         case '"' =>
           if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
-            val _ = slices.addOne(Range(sliceStart, i))
+            slices.addOne(Slice(sliceStart, i))
             sliceStart = i + 1
             i += 2
           } else {
@@ -308,8 +324,8 @@ object CsvParser {
     }
 
     {
-      val _ = slices.addOne(Range(sliceStart, i))
-      val _ = fields += trimString(options, Range.slice(slices, line))
+      slices.addOne(Slice(sliceStart, i))
+      fields addOne trimString(options, Slice.slice(slices, line))
     }
 
     fields.result()

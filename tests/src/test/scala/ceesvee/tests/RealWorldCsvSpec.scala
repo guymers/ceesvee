@@ -10,6 +10,7 @@ import ceesvee.tests.model.NZGreenhouseGasEmissions
 import ceesvee.tests.model.UkCausewayCoast
 import ceesvee.tests.model.UkPropertySalesPricePaid
 import ceesvee.zio.ZioCsvReader
+import ceesvee.zio.ZioCsvReaderVector
 import zio.ZIO
 import zio.durationInt
 import zio.stream.ZPipeline
@@ -126,14 +127,14 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
           assertTrue(count == total)
         }
       },
-//      test("zio vector") {
-//        val pipeline = ZioCsvReaderVector.decode(charset, options)(decoder, implicitly).mapError {
-//          case e: CsvParser.Error.LineTooLong => e
-//        }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
-//        readFileZio(path).via(pipeline).runCount.map { count =>
-//          assertTrue(count == total)
-//        }
-//      },
+      test("zio vector") {
+        val pipeline = ZioCsvReaderVector.decode(charset, options)(decoder, implicitly).mapError {
+          case e: CsvParser.Error.LineTooLong => e
+        }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
+        readFileZio(path).via(pipeline).runCount.map { count =>
+          assertTrue(count == total)
+        }
+      },
     )
   }
 
