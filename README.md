@@ -14,9 +14,8 @@ case class Test(
   int: Int,
   bool: Boolean,
   optInt: Option[Int],
-)
+) derives CsvRecordDecoder
 object Test {
-  implicit val decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derive
   val header = ::("str", List("int", "bool", "opt_int"))
   val csvHeader = CsvHeader.create(header)(decoder)
 }

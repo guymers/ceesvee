@@ -4,9 +4,9 @@ import ceesvee.CsvParser
 import zio.stream.ZStream
 import zio.test.ZIOSpecDefault
 
-object CsvParserSpec extends ZIOSpecDefault with ceesvee.CsvParserParserSuite {
+object ZioCsvParserSpec extends ZIOSpecDefault with ceesvee.CsvParserParserSuite {
 
-  override val spec = suite("CsvParser")(
+  override val spec = suite("ZioCsvParser")(
     parserSuite,
   )
 

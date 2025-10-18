@@ -11,16 +11,23 @@ import java.util.concurrent.TimeUnit
 @State(Scope.Thread)
 @BenchmarkMode(Array(Mode.AverageTime))
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Fork(
+  jvmArgs = Array(
+    "--enable-preview",
+    "--add-modules=jdk.incubator.vector",
+  ),
+)
 class ParserBenchmark {
 
   private def line(i: Int) = List("basic string", " \"quoted \nstring\" ", i.toString, "456.789", "true").mkString(",")
 
+  private val charset = StandardCharsets.UTF_8
   private val lines = (1 to 1000).map(line(_)).mkString("\n")
-  private def linesChunked = lines.grouped(8192)
+  private val linesBytes = lines.getBytes(charset)
   private def linesReader = {
     val streams = new java.util.ArrayList[ByteArrayInputStream]()
-    linesChunked.foreach { str =>
-      streams.add(new ByteArrayInputStream(str.getBytes(StandardCharsets.UTF_8)))
+    linesBytes.grouped(8192).foreach { bytes =>
+      streams.add(new ByteArrayInputStream(bytes))
     }
     val is = new SequenceInputStream(java.util.Collections.enumeration(streams))
     new InputStreamReader(is)
@@ -32,7 +39,12 @@ class ParserBenchmark {
 
   @Benchmark
   def ceesvee: List[List[String]] = {
-    _root_.ceesvee.CsvParser.parse[List](linesChunked, ceesveeOptions).toList
+    _root_.ceesvee.CsvParser.parse[List](lines.grouped(8192), ceesveeOptions).toList
+  }
+
+  @Benchmark
+  def ceesveeVector: List[List[String]] = {
+    _root_.ceesvee.CsvParserVector.parse[List](linesBytes.grouped(8192), charset, ceesveeOptions).toList
   }
 
   @Benchmark
