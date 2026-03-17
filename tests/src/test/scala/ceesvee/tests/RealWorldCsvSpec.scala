@@ -69,13 +69,11 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         },
         test("zio") {
           val stream = readFileZio(path)
-          ZIO.scoped[Any] {
-            ZioCsvReader.decodeWithHeader(stream, UkCausewayCoast.csvHeader, options).flatMap { s =>
-              s.runCollect.mapError(Left(_))
+          ZioCsvReader.decodeWithHeader(stream, UkCausewayCoast.csvHeader, options)
+            .runCollect
+            .map { result =>
+              assertResult(result)
             }
-          }.map { result =>
-            assertResult(result)
-          }
         },
       )
     }*),
@@ -139,13 +137,12 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
       },
       test("zio") {
         val stream = readFileZio(path)
-        ZIO.scoped[Any] {
-          ZioCsvReader.decodeWithHeader(stream, header, options).flatMap { s =>
-            s.collectRight.runCount.mapError(Left(_))
+        ZioCsvReader.decodeWithHeader(stream, header, options)
+          .collectRight
+          .runCount
+          .map { count =>
+            assertTrue(count == total)
           }
-        }.map { count =>
-          assertTrue(count == total)
-        }
       },
     )
   }
