@@ -9,10 +9,10 @@ jobs:
     name: Publish
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install JDK 11
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: '11'
@@ -22,7 +22,7 @@ jobs:
         uses: sbt/setup-sbt@v1
 
       - name: Cache SBT
-        uses: coursier/cache-action@v6
+        uses: coursier/cache-action@v8
         with:
           extraKey: v1
 
