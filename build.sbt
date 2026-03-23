@@ -194,10 +194,16 @@ val TestCsvFiles = Map(
   ),
 )
 
-def downloadTestCsvFile(log: Logger, file: File): Unit = {
-  import scala.sys.process.*
+val TestTsvFiles = Map(
+  // https://data.gov.au/data/dataset/fedora-pid_csiro-66416
+  "cape-ivy-population-genomics.tsv" -> (
+    "https://data.csiro.au/dap/ws/v2/collections/66416/data/86166655",
+    "07ad1b72deb4cf6251713704f294483f4ffc844a",
+  )
+)
 
-  val (_url, _hash) = TestCsvFiles(file.name)
+def downloadTestFile(log: Logger, file: File, _url: String, _hash: String): Unit = {
+  import scala.sys.process.*
 
   val currentHash = FileInfo.hash(file)
   val expected = FileInfo.hash(file, _hash.sliding(2, 2).map(Integer.parseInt(_, 16).toByte).toArray)
@@ -206,21 +212,21 @@ def downloadTestCsvFile(log: Logger, file: File): Unit = {
     file.getParentFile.mkdirs()
     file.createNewFile()
 
-    log.info(s"Downloading test CSV file: ${file.name}")
+    log.info(s"Downloading test file: ${file.name}")
 
     url(_url) #> file !
 
-    log.info(s"Downloaded test CSV file: ${file.name}")
+    log.info(s"Downloaded test file: ${file.name}")
 
     val hash = FileInfo.hash(file)
     if (hash != expected) {
-      throw new IllegalStateException(s"Test CSV file ${file.name} does not match expected hash")
+      throw new IllegalStateException(s"Test file ${file.name} does not match expected hash")
     }
   }
 }
 
 // only want to download the files once no matter how many cross Scala versions there are
-def _testCsvFilesDir(base: File) = base / "target" / "scala" / "resource_managed" / "test"
+def _testFilesDir(base: File) = base / "target" / "scala" / "resource_managed" / "test"
 
 lazy val tests = proj("tests", None)
   .settings(publish / skip := true)
@@ -232,12 +238,18 @@ lazy val tests = proj("tests", None)
     Test / resourceGenerators += Def.task {
       val s = streams.value
 
-      val dir = _testCsvFilesDir((Test / baseDirectory).value)
-      val files = TestCsvFiles.keys.toSeq.map(dir / "csv" / _)
-      files.foreach(downloadTestCsvFile(s.log, _))
-      files
+      val dir = _testFilesDir((Test / baseDirectory).value)
+      TestCsvFiles.toSeq.map  { case (f, (url, hash)) =>
+        val file = dir / "csv" / f
+        downloadTestFile(s.log, file, url, hash)
+        file
+      } ++ TestTsvFiles.map  { case (f, (url, hash)) =>
+        val file = dir / "tsv" / f
+        downloadTestFile(s.log, file, url, hash)
+        file
+      }
     }.taskValue,
-    Test / managedResourceDirectories += _testCsvFilesDir((Test / baseDirectory).value),
+    Test / managedResourceDirectories += _testFilesDir((Test / baseDirectory).value),
   )
   .dependsOn(core, fs2, zio)
   .disablePlugins(MimaPlugin)
