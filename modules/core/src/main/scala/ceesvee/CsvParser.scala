@@ -12,6 +12,7 @@ object CsvParser {
     def maximumLineLength: Int
     def skipBlankRows: Boolean
     def trim: Options.Trim
+    def delimiter: Options.Delimiter
   }
   object Options {
 
@@ -20,6 +21,7 @@ object CsvParser {
       maximumLineLength = 10_000,
       skipBlankRows = false,
       trim = Trim.True,
+      delimiter = Options.Delimiter.Comma,
     )
 
     case class Impl(
@@ -27,6 +29,7 @@ object CsvParser {
       maximumLineLength: Int,
       skipBlankRows: Boolean,
       trim: Trim,
+      delimiter: Options.Delimiter,
     ) extends Options
 
     def apply(
@@ -34,12 +37,20 @@ object CsvParser {
       maximumLineLength: Int,
       skipBlankRows: Boolean,
       trim: Trim,
+      delimiter: Options.Delimiter,
     ): Impl = Impl(
       commentPrefix = commentPrefix,
       maximumLineLength = maximumLineLength,
       skipBlankRows = skipBlankRows,
       trim = trim,
+      delimiter = delimiter,
     )
+
+    sealed abstract class Delimiter extends Serializable with Product
+    object Delimiter {
+      case object Comma extends Delimiter
+      case object Tab extends Delimiter
+    }
 
     sealed abstract class Trim {
       def strip(str: String): String
@@ -294,32 +305,64 @@ object CsvParser {
     var insideQuote = false
 
     while (i < line.length) {
-      (line(i): @switch) match {
+      options.delimiter match {
+        case Options.Delimiter.Comma =>
+          (line(i): @switch) match {
 
-        case ',' =>
-          if (!insideQuote) {
-            {
-              slices.addOne(Slice(sliceStart, i))
-              fields addOne trimString(options, Slice.slice(slices, line))
-            }
-            i += 1
-            sliceStart = i
-          } else {
-            i += 1
+            case ',' =>
+              if (!insideQuote) {
+                {
+                  slices.addOne(Slice(sliceStart, i))
+                  fields addOne trimString(options, Slice.slice(slices, line))
+                }
+                i += 1
+                sliceStart = i
+              } else {
+                i += 1
+              }
+
+            case '"' =>
+              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
+                slices.addOne(Slice(sliceStart, i))
+                sliceStart = i + 1
+                i += 2
+              } else {
+                i += 1
+                insideQuote = !insideQuote
+              }
+
+            case _ =>
+              i += 1
           }
 
-        case '"' =>
-          if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
-            slices.addOne(Slice(sliceStart, i))
-            sliceStart = i + 1
-            i += 2
-          } else {
-            i += 1
-            insideQuote = !insideQuote
-          }
+        case Options.Delimiter.Tab =>
+          (line(i): @switch) match {
 
-        case _ =>
-          i += 1
+            case '\t' =>
+              if (!insideQuote) {
+                {
+                  slices.addOne(Slice(sliceStart, i))
+                  fields addOne trimString(options, Slice.slice(slices, line))
+                }
+                i += 1
+                sliceStart = i
+              } else {
+                i += 1
+              }
+
+            case '"' =>
+              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
+                slices.addOne(Slice(sliceStart, i))
+                sliceStart = i + 1
+                i += 2
+              } else {
+                i += 1
+                insideQuote = !insideQuote
+              }
+
+            case _ =>
+              i += 1
+          }
       }
     }
 

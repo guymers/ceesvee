@@ -11,6 +11,7 @@ object CsvReader {
       maximumLineLength = CsvParser.Options.Defaults.maximumLineLength,
       skipBlankRows = CsvParser.Options.Defaults.skipBlankRows,
       trim = CsvParser.Options.Defaults.trim,
+      delimiter = CsvParser.Options.Defaults.delimiter,
     )
 
     case class Impl(
@@ -18,6 +19,7 @@ object CsvReader {
       maximumLineLength: Int,
       skipBlankRows: Boolean,
       trim: CsvParser.Options.Trim,
+      delimiter: CsvParser.Options.Delimiter,
     ) extends Options
 
     def apply(
@@ -25,11 +27,13 @@ object CsvReader {
       maximumLineLength: Int,
       skipBlankRows: Boolean,
       trim: CsvParser.Options.Trim,
+      delimiter: CsvParser.Options.Delimiter,
     ): Impl = Impl(
       commentPrefix = commentPrefix,
       maximumLineLength = maximumLineLength,
       skipBlankRows = skipBlankRows,
       trim = trim,
+      delimiter = delimiter,
     )
   }
 
