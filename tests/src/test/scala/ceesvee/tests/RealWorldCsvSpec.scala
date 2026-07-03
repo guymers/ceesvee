@@ -19,12 +19,10 @@ import zio.test.ZIOSpecDefault
 import zio.test.assertTrue
 
 import java.net.URI
-import java.nio.charset.StandardCharsets
 
 object RealWorldCsvSpec extends ZIOSpecDefault {
   import RealWorldFileHelper.*
 
-  private val charset = StandardCharsets.UTF_8
   private val options = CsvReader.Options.Defaults
 
   override val spec = suite("RealWorldCsv")(
@@ -74,7 +72,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         },
         test("zio vector") {
           val stream = readResourceZio(resource).drop(3) // UTF8 BOM
-          ceesvee.zio.ZioCsvReaderVector.decodeWithHeader(stream, UkCausewayCoast.csvHeader, charset, options)
+          ceesvee.zio.ZioCsvReaderVector.decodeWithHeader(stream, UkCausewayCoast.csvHeader, options)
             .runCollect
             .map { result =>
               assertResult(result)
@@ -119,7 +117,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         }
       },
       test("zio vector") {
-        val pipeline = ZioCsvReaderVector.decode(charset, options)(decoder, implicitly).mapError {
+        val pipeline = ZioCsvReaderVector.decode(options)(decoder, implicitly).mapError {
           case e: CsvParser.Error.LineTooLong => e
         }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
         readResourceZio(resource).via(pipeline).runCount.map { count =>

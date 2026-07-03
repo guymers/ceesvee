@@ -13,10 +13,9 @@ object ZioCsvParserVectorSpec extends ZIOSpecDefault with ceesvee.CsvParserParse
   )
 
   override protected def parse(lines: Iterable[String], options: CsvParser.Options) = {
-    val charset = StandardCharsets.UTF_8
-    val input = ZStream.fromIterable(lines).intersperse("\n").rechunk(4096).mapConcat(_.getBytes(charset))
+    val input = ZStream.fromIterable(lines).intersperse("\n").rechunk(4096).mapConcat(_.getBytes(StandardCharsets.UTF_8))
     input
-      .via(ZioCsvParserVector.parse(charset, options))
+      .via(ZioCsvParserVector.parse(options))
       .map(_.toList)
       .runCollect
       .mapError(e => new RuntimeException(s"failed to parse: $e"))

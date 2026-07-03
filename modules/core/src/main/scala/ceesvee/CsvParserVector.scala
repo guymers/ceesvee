@@ -1,6 +1,6 @@
 package ceesvee
 
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 import jdk.incubator.vector.ByteVector
 import jdk.incubator.vector.VectorMask
 import scala.annotation.tailrec
@@ -16,7 +16,6 @@ import scala.collection.mutable
 object CsvParserVector {
   import CsvParser.Error
   import CsvParser.Options
-  import CsvParser.ignoreTrimmedLine
 
   /**
    * @see
@@ -25,12 +24,11 @@ object CsvParserVector {
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
   def parse[C[_]](
     in: Iterator[Array[Byte]],
-    charset: Charset,
     options: Options,
   )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
     splitLines(in, options)
-      .map(parseLine(_, charset, options))
-      .filter(fields => fields != null)
+      .filter(bytes => !CsvParser.ignoreLine(new String(bytes, Utf8), options))
+      .map(parseLine(_, options))
   }
 
   /**
@@ -88,6 +86,7 @@ object CsvParserVector {
   private val Tab: Byte = '\t'
   private val NewLine: Byte = '\n'
   private val CarriageReturn: Byte = '\r'
+  private val Utf8 = StandardCharsets.UTF_8
 
   private val ByteVectorSpecies = ByteVector.SPECIES_PREFERRED
 
@@ -135,7 +134,7 @@ object CsvParserVector {
       }
       if (quoteStart >= 0) {
         var j = ByteVectorSpecies.length - 1
-        while (j > quoteStart) {
+        while (j >= quoteStart) {
           betweenQuotes = betweenQuotes | (1L << j)
           j = j - 1
         }
@@ -200,15 +199,12 @@ object CsvParserVector {
   /**
    * Parse a line into a collection of CSV fields.
    */
-  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf", "org.wartremover.warts.Null"))
   private[ceesvee] def parseLine[C[_]](
     bytes: Array[Byte],
-    charset: Charset,
     options: Options,
   )(implicit f: Factory[String, C[String]]): C[String] = {
 
     val builder = f.newBuilder
-    var builderEmpty = true
     var insideQuote = false
     var sliceStart = 0
     val delimiter = options.delimiter match {
@@ -250,7 +246,7 @@ object CsvParserVector {
       }
       if (quoteStart >= 0) {
         var j = ByteVectorSpecies.length - 1
-        while (j > quoteStart) {
+        while (j >= quoteStart) {
           betweenQuotes = betweenQuotes | (1L << j)
           j = j - 1
         }
@@ -276,15 +272,9 @@ object CsvParserVector {
           delimiterIgnoringWithinQuotesBitSet ^ java.lang.Long.lowestOneBit(delimiterIgnoringWithinQuotesBitSet)
 
         val sliceTo = i + r
-        val str = handleField(arraySlice(bytes, sliceStart, sliceTo, i, 0), charset, options)
-        if (builderEmpty && ignoreTrimmedLine(str, options)) {
-          i = bytes.length
-          delimiterIgnoringWithinQuotesBitSet = 0
-        } else {
-          val _ = builder += str
-          builderEmpty = false
-          sliceStart = sliceTo + 1
-        }
+        val str = handleField(arraySlice(bytes, sliceStart, sliceTo, i, 0), options)
+        val _ = builder += str
+        sliceStart = sliceTo + 1
       }
 
       i = i + ByteVectorSpecies.length
@@ -296,19 +286,14 @@ object CsvParserVector {
       bytes.slice(sliceStart, bytes.length)
     }
 
-    val str = handleField(remaining, charset, options)
-    if (builderEmpty && ignoreTrimmedLine(str, options)) {
-      ()
-    } else {
-      val _ = builder += str
-      builderEmpty = false
-    }
+    val str = handleField(remaining, options)
+    val _ = builder += str
 
-    if (builderEmpty) null.asInstanceOf[C[String]] else builder.result()
+    builder.result()
   }
 
-  private def handleField(bytes: Array[Byte], charset: Charset, options: Options) = {
-    val str = new String(bytes, charset)
+  private def handleField(bytes: Array[Byte], options: Options) = {
+    val str = new String(bytes, Utf8)
     val trimmed = Options.Trim.True.strip(str)
 
     if (trimmed.length >= 2 && trimmed.charAt(0) == '"' && trimmed.charAt(trimmed.length - 1) == '"') {

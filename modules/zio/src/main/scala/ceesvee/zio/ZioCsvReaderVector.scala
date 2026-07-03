@@ -8,8 +8,6 @@ import ceesvee.CsvParser
 import ceesvee.CsvReader
 import ceesvee.CsvRecordDecoder
 
-import java.nio.charset.Charset
-
 object ZioCsvReaderVector {
   import ZioCsvReader.Error
 
@@ -21,12 +19,11 @@ object ZioCsvReaderVector {
   def decodeWithHeader[R, E, T](
     stream: ZStream[R, E, Byte],
     header: CsvHeader[T],
-    charset: Charset,
     options: CsvReader.Options,
   )(implicit
     trace: ZIOTrace,
   ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = {
-    val parse = ZioCsvParserVector.parse(charset, options)
+    val parse = ZioCsvParserVector.parse(options)
     ZioCsvReader.decodeWithHeader_(stream, header)(parse)
   }
 
@@ -34,12 +31,11 @@ object ZioCsvReaderVector {
    * Turns a stream of strings into a stream of decoded CSV records.
    */
   def decode[T](
-    charset: Charset,
     options: CsvReader.Options,
   )(implicit
     D: CsvRecordDecoder[T],
     trace: ZIOTrace,
   ): ZPipeline[Any, CsvParser.Error, Byte, Either[CsvRecordDecoder.Errors, T]] = {
-    ZioCsvParserVector.parse(charset, options) >>> ZPipeline.map(D.decode(_))
+    ZioCsvParserVector.parse(options) >>> ZPipeline.map(D.decode(_))
   }
 }

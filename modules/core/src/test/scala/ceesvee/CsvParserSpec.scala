@@ -77,6 +77,15 @@ trait CsvParserParserSuite { self: ZIOSpecDefault =>
             List("d", "e", "f"),
           ))
         }
+      } ::
+      test("does not skip quoted comment marker") {
+        val opts = CsvParser.Options.Defaults.copy(commentPrefix = Some("#"))
+        parse(List("""a,b,c""", """"#",value""", """#ignored"""), opts).map { result =>
+          assertTrue(result == Chunk(
+            List("a", "b", "c"),
+            List("#", "value"),
+          ))
+        }
       } :: Nil
     }),
     suite("skip blank rows")({
@@ -92,6 +101,16 @@ trait CsvParserParserSuite { self: ZIOSpecDefault =>
         parse(lines, opts).map { result =>
           assertTrue(result == Chunk(
             List("a", "b", "c"),
+            List("d", "e", "f"),
+          ))
+        }
+      } ::
+      test("does not skip row with blank first field") {
+        val opts = CsvParser.Options.Defaults.copy(skipBlankRows = true)
+        parse(List("a,b,c", ",value", "", "d,e,f"), opts).map { result =>
+          assertTrue(result == Chunk(
+            List("a", "b", "c"),
+            List("", "value"),
             List("d", "e", "f"),
           ))
         }
@@ -120,6 +139,11 @@ trait CsvSplitStringsSuite[S] { self: ZIOSpecDefault =>
 
   protected def splitStringsSuite = {
     suite("split strings")(
+      test("CRLF split across chunks") {
+        val (state, lines) = splitStrings(List("a,b\r", "\nc,d"), initialState)
+        assertTrue(lines == List("a,b")) &&
+        assertTrue(stateLeftover(state) == "c,d")
+      },
       test("trailing new lines") {
         val strings = List(
           "abc\r",
@@ -211,6 +235,12 @@ trait CsvSplitStringsSuite[S] { self: ZIOSpecDefault =>
         )) &&
         assertTrue(stateLeftover(state) == "nmno")
       },
+      test("new line at vector boundary inside quoted line") {
+        val value = "x" * 63
+        val (state, lines) = splitStrings(List("\"" + value + "\nclose\"\nnext"), initialState)
+        assertTrue(lines == List("\"" + value + "\nclose\"")) &&
+        assertTrue(stateLeftover(state) == "next")
+      },
       // TODO property based tests
     )
   }
@@ -229,12 +259,21 @@ trait CsvParserLineSuite { self: ZIOSpecDefault =>
           val line = """a,"b""c",d,e"f"""
           assertTrue(parseLine(line, Options.Defaults) == List("a", """b"c""", "d", "e\"f"))
         },
+        test("preserves doubled quotes in unquoted fields") {
+          assertTrue(parseLine("""a""b,c""", Options.Defaults) == List("""a""b""", "c"))
+        },
       ),
       suite("delimiter")(
         test("comma") {
           val line = "abc,123,data,,"
           val result = parseLine(line, Options.Defaults.copy(delimiter = Options.Delimiter.Comma))
           assertTrue(result == List("abc", "123", "data", "", ""))
+        },
+        test("comma at vector boundary inside quoted field") {
+          val value = "x" * 63
+          val line = s""""$value,inside",tail"""
+          val result = parseLine(line, Options.Defaults.copy(delimiter = Options.Delimiter.Comma))
+          assertTrue(result == List(s"$value,inside", "tail"))
         },
         test("tab") {
           val line = "abc\t123\tdata\t\t"

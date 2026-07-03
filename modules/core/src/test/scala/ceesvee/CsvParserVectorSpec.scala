@@ -21,18 +21,19 @@ object CsvParserVectorSpec extends ZIOSpecDefault
 
   override protected def parse(lines: Iterable[String], options: CsvParser.Options) = {
     val input = lines.mkString("\n").grouped(8192).map(_.getBytes(charset))
-    val result = CsvParserVector.parse[List](input, charset, options)
+    val result = CsvParserVector.parse[List](input, options)
     ZIO.succeed(Chunk.fromIterator(result))
   }
 
   override protected def parseLine(line: String, options: CsvParser.Options) = {
-    CsvParserVector.parseLine[List](line.getBytes(charset), charset, options)
+    CsvParserVector.parseLine[List](line.getBytes(charset), options)
   }
 
   override protected def splitStrings(strings: List[String], state: CsvParserVector.State) = {
-    val input = strings.mkString("").getBytes(charset)
-    val (s, o) = CsvParserVector.splitBytes[List](input, state)
-    (s, o.map(new String(_, charset)))
+    strings.foldLeft((state, List.empty[String])) { case ((s, acc), str) =>
+      val (nextState, lines) = CsvParserVector.splitBytes[List](str.getBytes(charset), s)
+      (nextState, acc ++ lines.map(new String(_, charset)))
+    }
   }
 
   override protected def initialState = CsvParserVector.State.initial

@@ -21,9 +21,8 @@ class ParserBenchmark {
 
   private def line(i: Int) = List("basic string", " \"quoted \nstring\" ", i.toString, "456.789", "true").mkString(",")
 
-  private val charset = StandardCharsets.UTF_8
   private val lines = (1 to 1000).map(line(_)).mkString("\n")
-  private val linesBytes = lines.getBytes(charset)
+  private val linesBytes = lines.getBytes(StandardCharsets.UTF_8)
   private def linesReader = {
     val streams = new java.util.ArrayList[ByteArrayInputStream]()
     linesBytes.grouped(8192).foreach { bytes =>
@@ -44,7 +43,7 @@ class ParserBenchmark {
 
   @Benchmark
   def ceesveeVector: List[List[String]] = {
-    _root_.ceesvee.CsvParserVector.parse[List](linesBytes.grouped(8192), charset, ceesveeOptions).toList
+    _root_.ceesvee.CsvParserVector.parse[List](linesBytes.grouped(8192), ceesveeOptions).toList
   }
 
   @Benchmark

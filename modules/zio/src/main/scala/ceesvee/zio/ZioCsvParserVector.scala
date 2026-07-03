@@ -8,7 +8,7 @@ import _root_.zio.stream.ZPipeline
 import ceesvee.CsvParser
 import ceesvee.CsvParserVector
 
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 
 object ZioCsvParserVector {
   import CsvParserVector.State
@@ -19,16 +19,15 @@ object ZioCsvParserVector {
    * Turns a stream of strings into a stream of CSV records.
    */
   def parse(
-    charset: Charset,
     options: CsvParser.Options,
   )(implicit trace: ZIOTrace): ZPipeline[Any, CsvParser.Error, Byte, Chunk[String]] = {
-    _parse(State.initial, charset, options)
+    _parse(State.initial, options)
   }
 
-  private[ceesvee] def _parse(state: State, charset: Charset, options: CsvParser.Options)(implicit trace: ZIOTrace) = {
+  private[ceesvee] def _parse(state: State, options: CsvParser.Options)(implicit trace: ZIOTrace) = {
     _splitLines(state, options) >>>
-      ZPipeline.map(parseLine[Chunk](_, charset, options)) >>>
-      ZPipeline.filter[Chunk[String]](_ != null)
+      ZPipeline.filter[Array[Byte]](bytes => !CsvParser.ignoreLine(new String(bytes, StandardCharsets.UTF_8), options)) >>>
+      ZPipeline.map(parseLine[Chunk](_, options))
   }
 
   /**
@@ -37,10 +36,9 @@ object ZioCsvParserVector {
    * Delimiters within double-quotes are ignored.
    */
   def splitLines(
-    charset: Charset,
     options: CsvParser.Options,
   )(implicit trace: ZIOTrace): ZPipeline[Any, CsvParser.Error, Byte, String] = {
-    _splitLines(State.initial, options).map(new String(_, charset))
+    _splitLines(State.initial, options).map(new String(_, StandardCharsets.UTF_8))
   }
 
   private def _splitLines(
