@@ -4,14 +4,12 @@ import ceesvee.CsvHeader
 import ceesvee.CsvParser
 import ceesvee.CsvReader
 import ceesvee.fs2.Fs2CsvReader
-import ceesvee.tests.model.CapeIvyPopulationGenomics
+import ceesvee.tests.model.AustralianPostcodes
 import ceesvee.zio.ZioCsvReader
 import zio.durationInt
 import zio.test.TestAspect
 import zio.test.ZIOSpecDefault
 import zio.test.assertTrue
-
-import java.nio.file.Paths
 
 object RealWorldTsvSpec extends ZIOSpecDefault {
   import RealWorldFileHelper.*
@@ -21,26 +19,24 @@ object RealWorldTsvSpec extends ZIOSpecDefault {
   )
 
   override val spec = suite("RealWorldTsv")(
-    suite("Population genomics of Cape ivy")({
-      val path = Paths.get(getClass.getResource("/tsv/cape-ivy-population-genomics.tsv").getPath)
+    suite("Australian postcodes")({
+      val resource = "tsv/australian-postcodes.tsv"
 
-      val expected = CapeIvyPopulationGenomics(
-        id = "1.18",
-        pop = "Penola",
-        state = "South_Australia",
-        country = "Australia",
-        stipulate = "Unknown",
+      val expected = AustralianPostcodes(
+        suburb = "PADDINGTON",
+        state = "NSW",
+        postcode = 2021,
       )
 
-      def assertResult(result: Seq[Either[CsvHeader.Errors, CapeIvyPopulationGenomics]]) = {
-        assertTrue(result.count(_.isRight) == 1089) &&
-        assertTrue(result.apply(8) == Right(expected))
+      def assertResult(result: Seq[Either[CsvHeader.Errors, AustralianPostcodes]]) = {
+        assertTrue(result.count(_.isRight) == 16753) &&
+        assertTrue(result.apply(11040) == Right(expected))
       }
 
       List(
         test("scala") {
-          readFile(path) { input =>
-            val result = CsvReader.decodeWithHeader(input, CapeIvyPopulationGenomics.csvHeader, options)
+          readResource(resource) { input =>
+            val result = CsvReader.decodeWithHeader(input, AustralianPostcodes.csvHeader, options)
             result match {
               case l @ Left(_) => assertTrue(l.isRight)
               case Right(result) => assertResult(result.toSeq)
@@ -48,16 +44,16 @@ object RealWorldTsvSpec extends ZIOSpecDefault {
           }
         },
         test("fs2") {
-          val io = readFileFs2(path).through {
-            Fs2CsvReader.decodeWithHeader(CapeIvyPopulationGenomics.csvHeader, options)
+          val io = readResourceFs2(resource).through {
+            Fs2CsvReader.decodeWithHeader(AustralianPostcodes.csvHeader, options)
           }.compile.toList
           catsIoToZio(io).map { result =>
             assertResult(result)
           }
         },
         test("zio") {
-          val stream = readFileZio(path)
-          ZioCsvReader.decodeWithHeader(stream, CapeIvyPopulationGenomics.csvHeader, options)
+          val stream = readResourceZio(resource)
+          ZioCsvReader.decodeWithHeader(stream, AustralianPostcodes.csvHeader, options)
             .runCollect
             .map { result =>
               assertResult(result)
