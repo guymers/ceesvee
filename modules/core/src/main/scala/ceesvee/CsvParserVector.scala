@@ -85,6 +85,7 @@ object CsvParserVector {
 
   private val Quote: Byte = '"'
   private val Comma: Byte = ','
+  private val Tab: Byte = '\t'
   private val NewLine: Byte = '\n'
   private val CarriageReturn: Byte = '\r'
 
@@ -202,6 +203,10 @@ object CsvParserVector {
     var builderEmpty = true
     var insideQuote = false
     var sliceStart = 0
+    val delimiter = options.delimiter match {
+      case Options.Delimiter.Comma => Comma
+      case Options.Delimiter.Tab => Tab
+    }
 
     val loopBound = ByteVectorSpecies.loopBound(bytes.length)
 
@@ -246,8 +251,8 @@ object CsvParserVector {
       val quoteMask = quotes.or(VectorMask.fromLong(vector.species(), betweenQuotes))
       insideQuote = (quotes.trueCount() + (if (insideQuote) 1 else 0)) % 2 == 1
 
-      val commaChars = vector.eq(Comma)
-      val commaIgnoringWithinQuotes = commaChars.andNot(commaChars.and(quoteMask))
+      val delimiterChars = vector.eq(delimiter)
+      val delimiterIgnoringWithinQuotes = delimiterChars.andNot(delimiterChars.and(quoteMask))
 
       /*
           a,"b""c","d,e","",f
@@ -256,16 +261,17 @@ object CsvParserVector {
           0100000010000010010 = commaIgnoringWithinQuotes
        */
 
-      var commaIgnoringWithinQuotesBitSet = commaIgnoringWithinQuotes.toLong
-      while (java.lang.Long.bitCount(commaIgnoringWithinQuotesBitSet) > 0) {
-        val r = java.lang.Long.numberOfTrailingZeros(commaIgnoringWithinQuotesBitSet)
-        commaIgnoringWithinQuotesBitSet = commaIgnoringWithinQuotesBitSet ^ java.lang.Long.lowestOneBit(commaIgnoringWithinQuotesBitSet)
+      var delimiterIgnoringWithinQuotesBitSet = delimiterIgnoringWithinQuotes.toLong
+      while (java.lang.Long.bitCount(delimiterIgnoringWithinQuotesBitSet) > 0) {
+        val r = java.lang.Long.numberOfTrailingZeros(delimiterIgnoringWithinQuotesBitSet)
+        delimiterIgnoringWithinQuotesBitSet =
+          delimiterIgnoringWithinQuotesBitSet ^ java.lang.Long.lowestOneBit(delimiterIgnoringWithinQuotesBitSet)
 
         val sliceTo = i + r
         val str = handleField(arraySlice(bytes, sliceStart, sliceTo, i, 0), charset, options)
         if (builderEmpty && ignoreTrimmedLine(str, options)) {
           i = bytes.length
-          commaIgnoringWithinQuotesBitSet = 0
+          delimiterIgnoringWithinQuotesBitSet = 0
         } else {
           val _ = builder += str
           builderEmpty = false
