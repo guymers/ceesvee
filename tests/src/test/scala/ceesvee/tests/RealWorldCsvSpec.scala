@@ -19,6 +19,7 @@ import zio.test.ZIOSpecDefault
 import zio.test.assertTrue
 
 import java.net.URI
+import java.nio.charset.StandardCharsets
 
 object RealWorldCsvSpec extends ZIOSpecDefault {
   import RealWorldFileHelper.*
@@ -56,7 +57,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
           }
         },
         test("fs2") {
-          val io = readResourceFs2(resource).through {
+          val io = readResourceFs2(resource).through(fs2.text.utf8.decode).through {
             Fs2CsvReader.decodeWithHeader(UkCausewayCoast.csvHeader, options)
           }.compile.toList
           catsIoToZio(io).map { result =>
@@ -73,13 +74,11 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         },
         test("zio vector") {
           val stream = readResourceZio(resource).drop(3) // UTF8 BOM
-          ZIO.scoped[Any] {
-            ceesvee.zio.ZioCsvReaderVector.decodeWithHeader(stream, UkCausewayCoast.csvHeader, charset, options).flatMap { s =>
-              s.runCollect.mapError(Left(_))
+          ceesvee.zio.ZioCsvReaderVector.decodeWithHeader(stream, UkCausewayCoast.csvHeader, charset, options)
+            .runCollect
+            .map { result =>
+              assertResult(result)
             }
-          }.map { result =>
-            assertResult(result)
-          }
         },
       )
     }*),
@@ -104,7 +103,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         assertTrue(result == total)
       },
       test("fs2") {
-        val io = readResourceFs2(resource).through {
+        val io = readResourceFs2(resource).through(fs2.text.utf8.decode).through {
           Fs2CsvReader.decode[IO, T](options)(implicitly, decoder)
         }.collect { case Right(v) => v }.compile.count
         catsIoToZio(io).map { count =>
@@ -142,7 +141,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         assertTrue(result == Right(total))
       },
       test("fs2") {
-        val io = readResourceFs2(resource).through {
+        val io = readResourceFs2(resource).through(fs2.text.utf8.decode).through {
           Fs2CsvReader.decodeWithHeader(header, options)
         }.collect { case Right(v) => v }.compile.count
         catsIoToZio(io).map { count =>

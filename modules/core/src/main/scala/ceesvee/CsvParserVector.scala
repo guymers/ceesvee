@@ -169,14 +169,22 @@ object CsvParserVector {
           (r > 0 && crIgnoringWithinQuotes.laneIsSet(r - 1))
 
         val sliceTo = i + r
-        val leftover = if (sliceStart == 0) state.leftover else Array.emptyByteArray
-        val to = if (isPrevCr) sliceTo - 1 else sliceTo
+        val crFromPreviousChunk = i == 0 && r == 0 && isPrevCr
+        val leftover = if (sliceStart == 0) {
+          if (crFromPreviousChunk && state.leftover.nonEmpty) {
+            state.leftover.slice(0, state.leftover.length - 1)
+          } else state.leftover
+        } else {
+          Array.emptyByteArray
+        }
+        val to = if (isPrevCr && !crFromPreviousChunk) sliceTo - 1 else sliceTo
         val _ = builder += leftover ++ arraySlice(bytes, sliceStart, to, i, 0)
 
         sliceStart = sliceTo + 1
       }
 
-      prevCarriageReturn = crIgnoringWithinQuotes.laneIsSet(vector.length() - 1)
+      val vectorLength = Math.min(ByteVectorSpecies.length, bytes.length - i)
+      prevCarriageReturn = crIgnoringWithinQuotes.laneIsSet(vectorLength - 1)
       i = i + ByteVectorSpecies.length
     }
 
@@ -301,8 +309,13 @@ object CsvParserVector {
 
   private def handleField(bytes: Array[Byte], charset: Charset, options: Options) = {
     val str = new String(bytes, charset)
-    val s = CsvParser.trimString(options, str)
-    s.replace("\"\"", "\"")
+    val trimmed = Options.Trim.True.strip(str)
+
+    if (trimmed.length >= 2 && trimmed.charAt(0) == '"' && trimmed.charAt(trimmed.length - 1) == '"') {
+      trimmed.substring(1, trimmed.length - 1).replace("\"\"", "\"")
+    } else {
+      options.trim.strip(str)
+    }
   }
 
   private def arraySlice(src: Array[Byte], from: Int, to: Int, offset: Int, ignore: Long) = {

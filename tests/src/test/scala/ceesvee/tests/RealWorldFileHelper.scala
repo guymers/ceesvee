@@ -3,7 +3,6 @@ package ceesvee.tests
 import cats.effect.IO
 import cats.syntax.show.*
 import zio.ZIO
-import zio.stream.ZPipeline
 import zio.stream.ZStream
 
 import java.io.FileNotFoundException

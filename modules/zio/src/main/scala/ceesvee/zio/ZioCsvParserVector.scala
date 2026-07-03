@@ -2,14 +2,11 @@ package ceesvee.zio
 
 import _root_.zio.Chunk
 import _root_.zio.Ref
-import _root_.zio.Scope
 import _root_.zio.Trace as ZIOTrace
 import _root_.zio.ZIO
 import _root_.zio.stream.ZPipeline
-import _root_.zio.stream.ZStream
 import ceesvee.CsvParser
 import ceesvee.CsvParserVector
-import ceesvee.CsvReader
 
 import java.nio.charset.Charset
 
