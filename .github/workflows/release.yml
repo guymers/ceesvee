@@ -9,22 +9,22 @@ jobs:
     name: Publish
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
         with:
           distribution: zulu
           java-version: '21'
           java-package: jdk
 
       - name: Install SBT
-        uses: sbt/setup-sbt@v1
+        uses: sbt/setup-sbt@66fb4376e81982c7d92a4074170846fff88e2e30 # v1.5.0
 
       - name: Cache SBT
-        uses: coursier/cache-action@v6
+        uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
         with:
-          extraKey: v1
+          extraKey: v2
 
       - name: Release
         run: sbt ci-release

@@ -1,21 +1,22 @@
 // format: off
 
+import sbt.util.CacheImplicits.given
+import xsbti.HashedVirtualFileRef
+
 val catsVersion = "2.13.0"
-val fs2Version = "3.12.2"
+val fs2Version = "3.13.0"
 val zioVersion = "2.1.19"
 
-val Scala213 = "2.13.16"
-val Scala3 = "3.3.6"
+val Scala213 = "2.13.18"
+val Scala3 = "3.3.8"
 
-inThisBuild(Seq(
-  organization := "io.github.guymers",
-  homepage := Some(url("https://github.com/guymers/ceesvee")),
-  licenses := List(License.MIT),
-  developers := List(
-    Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
-  ),
-  scmInfo := Some(ScmInfo(url("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git")),
-))
+organization := "io.github.guymers"
+homepage := Some(url("https://github.com/guymers/ceesvee"))
+licenses := List(License.MIT)
+developers := List(
+  Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
+)
+ThisBuild / scmInfo := Some(ScmInfo(url("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git"))
 
 lazy val commonSettings = Seq(
   scalaVersion := Scala213,
@@ -142,7 +143,7 @@ lazy val fs2 = module("fs2")
       "dev.zio" %% "zio-interop-cats" % "23.1.0.5" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, _)) => Seq(compilerPlugin("org.typelevel" % "kind-projector" % "0.13.3" cross CrossVersion.full))
+      case Some((2, _)) => Seq(compilerPlugin(("org.typelevel" % "kind-projector" % "0.13.4").cross(CrossVersion.full)))
       case _ => Seq.empty
     }),
   )
@@ -171,54 +172,32 @@ lazy val benchmark = proj("benchmark", None)
 
 Global / excludeLintKeys += benchmark / Compile / compile / wartremoverErrors
 
+lazy val testDataResourceDirectory = settingKey[File]("Directory for downloaded real-world test data files")
+lazy val testDataResources = taskKey[Seq[HashedVirtualFileRef]]("Downloaded real-world test data files")
 
-val TestCsvFiles = Map(
-  // https://www.stats.govt.nz/large-datasets/csv-files-for-download/
-  "nz-greenhouse-gas-emissions-2019.csv" -> (
-    "https://www.stats.govt.nz/assets/Uploads/Greenhouse-gas-emissions-industry-and-household/Greenhouse-gas-emissions-industry-and-household-Year-ended-2019/Download-data/Greenhouse-gas-emissions-industry-and-household-year-ended-2019-csv.csv",
-    "2561a652157c5eb8f23a7f84f3648440fe67ba8d",
-  ),
+ThisBuild / testDataResourceDirectory := rootOutputDirectory.value.resolve("test-data-resources").toFile
 
-  // https://data.gov.uk/dataset/48c917d5-11a0-429f-a0db-0c5ae6ffa1c8/places-to-visit-in-causeway-coast-and-glens
-  "uk-causeway-coast-and-glens.csv" -> (
-    "https://ccgbcodni-cbcni.opendata.arcgis.com/datasets/42b6ad70a304442dbdb963974d44b433_0.csv",
-    "5a15f2bf5861b34f985da88b33523f18aba10c08",
-  ),
+ThisBuild / testDataResources := Def.cachedTask {
+  val converter = fileConverter.value
+  val s = streams.value
 
-  // https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads
-  "uk-property-sales-price-paid-2019.csv" -> (
-    "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2019.csv",
-    "7c9cf6b70599b8ad54365171e5343273a5a91b04",
-  ),
-)
-
-def downloadTestCsvFile(log: Logger, file: File): Unit = {
-  import scala.sys.process.*
-
-  val (_url, _hash) = TestCsvFiles(file.name)
-
-  val currentHash = FileInfo.hash(file)
-  val expected = FileInfo.hash(file, _hash.sliding(2, 2).map(Integer.parseInt(_, 16).toByte).toArray)
-
-  if (currentHash != expected) {
-    file.getParentFile.mkdirs()
-    file.createNewFile()
-
-    log.info(s"Downloading test CSV file: ${file.name}")
-
-    url(_url) #> file !
-
-    log.info(s"Downloaded test CSV file: ${file.name}")
-
-    val hash = FileInfo.hash(file)
-    if (hash != expected) {
-      throw new IllegalStateException(s"Test CSV file ${file.name} does not match expected hash")
-    }
+  val dir = (ThisBuild / testDataResourceDirectory).value
+  val files = TestFiles.Csv.toSeq.map  { case (f, (url, hash)) =>
+    val file = dir / "csv" / f
+    TestFiles.download(s.log, file, url, hash)
+    file
+  } ++ TestFiles.Tsv.map  { case (f, (url, hash)) =>
+    val file = dir / "tsv" / f
+    TestFiles.download(s.log, file, url, hash)
+    file
   }
-}
 
-// only want to download the files once no matter how many cross Scala versions there are
-def _testCsvFilesDir(base: File) = base / "target" / "scala" / "resource_managed" / "test"
+  files.map { file =>
+    val vf = converter.toVirtualFile(file.toPath)
+    Def.declareOutput(vf)
+    vf: HashedVirtualFileRef
+  }
+}.value
 
 lazy val tests = proj("tests", None)
   .settings(publish / skip := true)
@@ -228,14 +207,15 @@ lazy val tests = proj("tests", None)
       "co.fs2" %% "fs2-io" % fs2Version % Test,
     ),
     Test / resourceGenerators += Def.task {
-      val s = streams.value
-
-      val dir = _testCsvFilesDir((Test / baseDirectory).value)
-      val files = TestCsvFiles.keys.toSeq.map(dir / "csv" / _)
-      files.foreach(downloadTestCsvFile(s.log, _))
-      files
+      val converter = fileConverter.value
+      (ThisBuild / testDataResources).value.map(vf => converter.toPath(vf).toFile)
     }.taskValue,
-    Test / managedResourceDirectories += _testCsvFilesDir((Test / baseDirectory).value),
+    Test / managedResourceDirectories := Seq((ThisBuild / testDataResourceDirectory).value),
   )
   .dependsOn(core, fs2, zio)
   .disablePlugins(MimaPlugin)
+
+Global / excludeLintKeys ++= Set(
+  com.github.sbt.git.SbtGit.GitKeys.gitDescribedVersion,
+  com.github.sbt.git.SbtGit.GitKeys.gitUncommittedChanges,
+)

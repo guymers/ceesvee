@@ -230,6 +230,18 @@ trait CsvParserLineSuite { self: ZIOSpecDefault =>
           assertTrue(parseLine(line, Options.Defaults) == List("a", """b"c""", "d", "e\"f"))
         },
       ),
+      suite("delimiter")(
+        test("comma") {
+          val line = "abc,123,data,,"
+          val result = parseLine(line, Options.Defaults.copy(delimiter = Options.Delimiter.Comma))
+          assertTrue(result == List("abc", "123", "data", "", ""))
+        },
+        test("tab") {
+          val line = "abc\t123\tdata\t\t"
+          val result = parseLine(line, Options.Defaults.copy(delimiter = Options.Delimiter.Tab))
+          assertTrue(result == List("abc", "123", "data", "", ""))
+        },
+      ),
       suite("trim")({
         val line = """abc, def,ghi , jkl , " mno ", """
 

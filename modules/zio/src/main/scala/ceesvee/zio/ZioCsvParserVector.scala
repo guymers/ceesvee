@@ -19,34 +19,6 @@ object ZioCsvParserVector {
   import CsvParserVector.splitBytes
 
   /**
-   * Turns a stream of strings into a stream of CSV records extracting the first
-   * record.
-   */
-  def parseWithHeader[R, E](
-    stream: ZStream[R, E, Byte],
-    charset: Charset,
-    options: CsvReader.Options,
-  )(implicit
-    trace: ZIOTrace,
-  ): ZIO[Scope & R, Error[E], (Chunk[String], ZStream[Any, Error[E], Chunk[String]])] = {
-    stream.mapError(Left(_)).peel {
-      extractFirstLine(charset, options).mapError(Right(_))
-    }.map { case ((headers, state, records), s) =>
-      (headers, ZStream.fromChunk(records) ++ (s >>> _parse(state, charset, options).mapError(Right(_))))
-    }
-  }
-
-  private def extractFirstLine(charset: Charset, options: CsvReader.Options)(implicit trace: ZIOTrace) = {
-    def process(state: State, bytes: Chunk[Byte]) = {
-      val (newState, lines) = splitBytes(bytes.toArray, state)
-      val records = lines.map(parseLine[Chunk](_, charset, options)).filter(_ != null)
-      (newState, records)
-    }
-
-    ZioCsvParser.extractFirstLine_(State.initial, options)(_.leftover.length, process)
-  }
-
-  /**
    * Turns a stream of strings into a stream of CSV records.
    */
   def parse(
