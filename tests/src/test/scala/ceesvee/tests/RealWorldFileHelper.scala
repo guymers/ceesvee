@@ -1,23 +1,30 @@
 package ceesvee.tests
 
 import cats.effect.IO
+import cats.syntax.show.*
+import zio.ZIO
 import zio.stream.ZPipeline
 import zio.stream.ZStream
 
+import java.io.FileNotFoundException
 import java.io.InputStream
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
+import scala.util.Using
 
 object RealWorldFileHelper {
 
-  def readFile[T](path: Path)(f: Iterator[String] => T) = {
-    val is = Files.newInputStream(path)
-    try {
+  private val ChunkSize = 16 * 1024
+
+  private def resourceStream(resource: String) = {
+    val classLoader = Thread.currentThread().getContextClassLoader
+    Option(classLoader.getResourceAsStream(resource))
+      .getOrElse(throw new FileNotFoundException(show"Resource not found: $resource"))
+  }
+
+  def readResource[T](resource: String)(f: Iterator[String] => T) = {
+    Using.resource(resourceStream(resource)) { is =>
       f(strings(is, StandardCharsets.UTF_8))
-    } finally {
-      is.close()
     }
   }
 
@@ -51,11 +58,12 @@ object RealWorldFileHelper {
     }
   }
 
-  def readFileFs2(path: Path) = {
-    fs2.io.file.Files[IO].readAll(fs2.io.file.Path.fromNioPath(path)).through(fs2.text.utf8.decode)
+  def readResourceFs2(resource: String) = {
+    fs2.io.readClassLoaderResource[IO](resource, chunkSize = ChunkSize).through(fs2.text.utf8.decode)
   }
 
-  def readFileZio(path: Path) = {
-    ZStream.fromPath(path, chunkSize = 16384) >>> ZPipeline.utfDecode
+  def readResourceZio(resource: String) = {
+    ZStream.fromInputStreamZIO(ZIO.attemptBlockingIO(resourceStream(resource)), chunkSize = ChunkSize) >>>
+      ZPipeline.utfDecode
   }
 }

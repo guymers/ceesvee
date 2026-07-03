@@ -1,2 +1,2 @@
 // reload plugins; dependencyUpdates
-//addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.6.4")
+//addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.7.0")
