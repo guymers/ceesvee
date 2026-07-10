@@ -1,7 +1,7 @@
 package ceesvee.fs2
 
 import _root_.fs2.Chunk
-import _root_.fs2.Pipe
+import _root_.fs2.Pipe as fs2Pipe
 import _root_.fs2.Pull
 import _root_.fs2.RaiseThrowable
 import _root_.fs2.Stream
@@ -19,12 +19,12 @@ object Fs2CsvParser {
   /**
    * Turns a stream of strings into a stream of CSV records.
    *
-   * Raises a [[Error.LineTooLong]] if a line is longer than
+   * Raises a [[CsvParser.Error.LineTooLong]] if a line is longer than
    * `maximumLineLength`.
    */
   def parse[F[_]: RaiseThrowable](
     options: CsvParser.Options,
-  ): Pipe[F, String, ArraySeq[String]] = {
+  ): fs2Pipe[F, String, ArraySeq[String]] = {
     _.through(splitLines(options))
       .filter(str => !ignoreLine(str, options))
       .map(parseLine[ArraySeq](_, options))
@@ -35,12 +35,12 @@ object Fs2CsvParser {
    *
    * Delimiters within double-quotes are ignored.
    *
-   * Raises a [[Error.LineTooLong]] if a line is longer than
+   * Raises a [[CsvParser.Error.LineTooLong]] if a line is longer than
    * `maximumLineLength`.
    */
   def splitLines[F[_]: RaiseThrowable](
     options: CsvParser.Options,
-  ): Pipe[F, String, String] = {
+  ): fs2Pipe[F, String, String] = {
 
     @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
     def go(stream: Stream[F, String], state: State, first: Boolean): Pull[F, String, Unit] =
@@ -54,7 +54,7 @@ object Fs2CsvParser {
         case Some((chunk, stream)) =>
           val (newState, lines) = splitStrings(chunk.toArraySeq, state)
 
-          if (newState.leftover.length > options.maximumLineLength) {
+          if (newState.leftover.length > options.maximumLineLength || lines.exists(_.length > options.maximumLineLength)) {
             Pull.raiseError[F](Error.LineTooLong(options.maximumLineLength))
           } else {
             Pull.output(Chunk.from(lines)) >> go(stream, newState, first = false)

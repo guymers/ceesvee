@@ -2,7 +2,7 @@ package ceesvee.zio
 
 import _root_.zio.Cause
 import _root_.zio.Chunk
-import _root_.zio.Trace
+import _root_.zio.Trace as ZIOTrace
 import _root_.zio.stream.ZPipeline
 import _root_.zio.stream.ZStream
 import ceesvee.CsvHeader
@@ -38,7 +38,7 @@ object ZioCsvReader {
     header: CsvHeader[T],
     options: CsvReader.Options,
   )(implicit
-    trace: Trace,
+    trace: ZIOTrace,
   ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = {
     decodeWithHeader_(stream, header)(ZioCsvParser.parse(options))
   }
@@ -50,7 +50,7 @@ object ZioCsvReader {
   )(
     parse: ZPipeline[Any, CsvParser.Error, A, Chunk[String]],
   )(implicit
-    trace: Trace,
+    trace: ZIOTrace,
   ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = ZStream.suspend {
     var decoder: CsvHeader.Decoder[T] = null
 
@@ -79,7 +79,7 @@ object ZioCsvReader {
     options: CsvReader.Options,
   )(implicit
     D: CsvRecordDecoder[T],
-    trace: Trace,
+    trace: ZIOTrace,
   ): ZPipeline[Any, CsvParser.Error, String, Either[CsvRecordDecoder.Errors, T]] = {
     ZioCsvParser.parse(options) >>> ZPipeline.map(D.decode(_))
   }

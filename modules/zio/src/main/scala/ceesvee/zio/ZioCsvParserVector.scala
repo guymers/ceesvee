@@ -11,6 +11,7 @@ import ceesvee.CsvParserVector
 import java.nio.charset.StandardCharsets
 
 object ZioCsvParserVector {
+  import CsvParser.Error
   import CsvParserVector.State
   import CsvParserVector.parseLine
   import CsvParserVector.splitBytes
@@ -20,12 +21,8 @@ object ZioCsvParserVector {
    */
   def parse(
     options: CsvParser.Options,
-  )(implicit trace: ZIOTrace): ZPipeline[Any, CsvParser.Error, Byte, Chunk[String]] = {
-    _parse(State.initial, options)
-  }
-
-  private[ceesvee] def _parse(state: State, options: CsvParser.Options)(implicit trace: ZIOTrace) = {
-    _splitLines(state, options) >>>
+  )(implicit trace: ZIOTrace): ZPipeline[Any, Error, Byte, Chunk[String]] = {
+    _splitLines(options) >>>
       ZPipeline.filter[Array[Byte]](bytes => !CsvParser.ignoreLine(new String(bytes, StandardCharsets.UTF_8), options)) >>>
       ZPipeline.map(parseLine[Chunk](_, options))
   }
@@ -37,16 +34,15 @@ object ZioCsvParserVector {
    */
   def splitLines(
     options: CsvParser.Options,
-  )(implicit trace: ZIOTrace): ZPipeline[Any, CsvParser.Error, Byte, String] = {
-    _splitLines(State.initial, options).map(new String(_, StandardCharsets.UTF_8))
+  )(implicit trace: ZIOTrace): ZPipeline[Any, Error, Byte, String] = {
+    _splitLines(options).map(new String(_, StandardCharsets.UTF_8))
   }
 
   private def _splitLines(
-    state: State,
     options: CsvParser.Options,
   )(implicit trace: ZIOTrace) = ZPipeline.fromPush {
-    Ref.make(state).map { stateRef => (chunk: Option[Chunk[Byte]]) =>
-      chunk match {
+    Ref.make(State.initial).map { stateRef => (chunk: Option[Chunk[Byte]]) =>
+      (chunk match {
         case None =>
           stateRef.getAndSet(State.initial).map { s =>
             if (s.leftover.isEmpty) Chunk.empty else Chunk(s.leftover)
@@ -54,10 +50,16 @@ object ZioCsvParserVector {
 
         case Some(bytes) =>
           stateRef.get.flatMap { s =>
-            ZIO.fail(CsvParser.Error.LineTooLong(options.maximumLineLength))
-              .when(s.leftover.length > options.maximumLineLength)
+            failWhenLineTooLong(s.leftover, options)
           } *> stateRef.modify(splitBytes[Chunk](bytes.toArray, _).swap)
+
+      }).tap { bytes =>
+        ZIO.foreachDiscard(bytes)(failWhenLineTooLong(_, options))
       }
     }
   }
+
+  private def failWhenLineTooLong(bytes: Array[Byte], options: CsvParser.Options) =
+    ZIO.fail(Error.LineTooLong(options.maximumLineLength))
+      .when(bytes.length > options.maximumLineLength)
 }

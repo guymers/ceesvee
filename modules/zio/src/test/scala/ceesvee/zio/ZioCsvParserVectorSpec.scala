@@ -18,6 +18,5 @@ object ZioCsvParserVectorSpec extends ZIOSpecDefault with ceesvee.CsvParserParse
       .via(ZioCsvParserVector.parse(options))
       .map(_.toList)
       .runCollect
-      .mapError(e => new RuntimeException(s"failed to parse: $e"))
   }
 }
