@@ -1,6 +1,7 @@
 package ceesvee.zio
 
 import _root_.zio.Cause
+import _root_.zio.Chunk
 import _root_.zio.Trace
 import _root_.zio.stream.ZPipeline
 import _root_.zio.stream.ZStream
@@ -38,11 +39,23 @@ object ZioCsvReader {
     options: CsvReader.Options,
   )(implicit
     trace: Trace,
+  ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = {
+    decodeWithHeader_(stream, header)(ZioCsvParser.parse(options))
+  }
+
+  @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.TryPartial", "org.wartremover.warts.Var"))
+  private[zio] def decodeWithHeader_[R, E, A, T](
+    stream: ZStream[R, E, A],
+    header: CsvHeader[T],
+  )(
+    parse: ZPipeline[Any, CsvParser.Error, A, Chunk[String]],
+  )(implicit
+    trace: Trace,
   ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = ZStream.suspend {
     var decoder: CsvHeader.Decoder[T] = null
 
     stream.mapError(Left(_)).via {
-      ZioCsvParser.parse(options).mapError {
+      parse.mapError {
         case CsvParser.Error.LineTooLong(maximum) => Right(Error.LineTooLong(maximum))
       }
     }.map { fields =>

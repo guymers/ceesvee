@@ -7,6 +7,7 @@ import ceesvee.fs2.Fs2CsvReader
 import ceesvee.tests.model.AustralianPostcodes
 import ceesvee.zio.ZioCsvReader
 import zio.durationInt
+import zio.stream.ZPipeline
 import zio.test.TestAspect
 import zio.test.ZIOSpecDefault
 import zio.test.assertTrue
@@ -44,7 +45,7 @@ object RealWorldTsvSpec extends ZIOSpecDefault {
           }
         },
         test("fs2") {
-          val io = readResourceFs2(resource).through {
+          val io = readResourceFs2(resource).through(fs2.text.utf8.decode).through {
             Fs2CsvReader.decodeWithHeader(AustralianPostcodes.csvHeader, options)
           }.compile.toList
           catsIoToZio(io).map { result =>
@@ -52,7 +53,7 @@ object RealWorldTsvSpec extends ZIOSpecDefault {
           }
         },
         test("zio") {
-          val stream = readResourceZio(resource)
+          val stream = readResourceZio(resource).via(ZPipeline.utfDecode)
           ZioCsvReader.decodeWithHeader(stream, AustralianPostcodes.csvHeader, options)
             .runCollect
             .map { result =>

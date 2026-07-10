@@ -36,7 +36,7 @@ object ZioCsvParser {
    */
   def splitLines(
     options: CsvParser.Options,
-  )(implicit trace: Trace): ZPipeline[Any, Error, String, String] = {
+  )(implicit trace: Trace): ZPipeline[Any, CsvParser.Error, String, String] = {
     _splitLines(State.initial, options)
   }
 

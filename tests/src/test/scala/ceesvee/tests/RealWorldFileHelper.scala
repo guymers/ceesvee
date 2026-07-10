@@ -3,7 +3,6 @@ package ceesvee.tests
 import cats.effect.IO
 import cats.syntax.show.*
 import zio.ZIO
-import zio.stream.ZPipeline
 import zio.stream.ZStream
 
 import java.io.FileNotFoundException
@@ -59,11 +58,10 @@ object RealWorldFileHelper {
   }
 
   def readResourceFs2(resource: String) = {
-    fs2.io.readClassLoaderResource[IO](resource, chunkSize = ChunkSize).through(fs2.text.utf8.decode)
+    fs2.io.readClassLoaderResource[IO](resource, chunkSize = ChunkSize)
   }
 
   def readResourceZio(resource: String) = {
-    ZStream.fromInputStreamZIO(ZIO.attemptBlockingIO(resourceStream(resource)), chunkSize = ChunkSize) >>>
-      ZPipeline.utfDecode
+    ZStream.fromInputStreamZIO(ZIO.attemptBlockingIO(resourceStream(resource)), chunkSize = ChunkSize)
   }
 }

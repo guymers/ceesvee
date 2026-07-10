@@ -27,7 +27,7 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-encoding", "UTF-8",
     "-feature",
-    "-release", "17",
+    "-release", "21",
     "-unchecked",
   ),
   scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
@@ -48,6 +48,7 @@ lazy val commonSettings = Seq(
     case Some((2, _)) => Seq(
       "-Vimplicits",
       "-Vtype-diffs",
+      "-Wconf:cat=scala3-migration:silent",
       "-Wdead-code",
       "-Wextra-implicit",
       "-Wnonunit-statement",
@@ -60,14 +61,11 @@ lazy val commonSettings = Seq(
       "-Xlint:_,-byname-implicit", // exclude byname-implicit https://github.com/scala/bug/issues/12072
     )
     case _ => Seq(
+      "-Wconf:name=PatternMatchExhaustivity:error",
       "-Wnonunit-statement",
       "-Wunused:all",
       "-Wvalue-discard",
     )
-  }),
-  Test / scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, _)) => Seq("-Wconf:cat=scala3-migration:silent")
-    case _ => Seq.empty
   }),
 
   Compile / console / scalacOptions ~= filterScalacConsoleOpts,

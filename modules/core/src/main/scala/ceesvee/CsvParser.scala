@@ -374,7 +374,7 @@ object CsvParser {
     fields.result()
   }
 
-  private def trimString(options: Options, str: String) = {
+  private[ceesvee] def trimString(options: Options, str: String) = {
     // always ignore whitespace around a quoted cell
     val trimmed = Options.Trim.True.strip(str)
 
