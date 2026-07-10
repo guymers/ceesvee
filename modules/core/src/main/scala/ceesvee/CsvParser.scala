@@ -142,6 +142,11 @@ object CsvParser {
         } else {
           val str = in.next()
           val (newState, lines) = splitStrings(List(str), state)
+          lines.foreach { line =>
+            if (line.length > options.maximumLineLength) {
+              throw Error.LineTooLong(options.maximumLineLength)
+            }
+          }
           val _ = toOutput.enqueueAll(lines)
           state = newState
           next()

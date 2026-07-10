@@ -19,7 +19,7 @@ object CsvParserSpec extends ZIOSpecDefault
   override protected def parse(lines: Iterable[String], options: CsvParser.Options) = {
     val input = lines.mkString("\n").grouped(8192)
     val result = CsvParser.parse[List](input, options)
-    ZIO.succeed(Chunk.fromIterator(result))
+    ZIO.attempt(Chunk.fromIterator(result)).refineOrDie { case e: CsvParser.Error => e }
   }
 
   override protected def parseLine(line: String, options: CsvParser.Options) = {
@@ -37,7 +37,7 @@ trait CsvParserParserSuite { self: ZIOSpecDefault =>
   protected def parse(
     lines: Iterable[String],
     options: CsvParser.Options,
-  ): ZIO[Any, Throwable, Chunk[List[String]]]
+  ): ZIO[Any, CsvParser.Error, Chunk[List[String]]]
 
   protected def parserSuite = suite("parser")(
     test("lots") {
@@ -48,6 +48,20 @@ trait CsvParserParserSuite { self: ZIOSpecDefault =>
         assertTrue(result.length == 10)
       }
     },
+    suite("maximum line length")(
+      test("oversized line") {
+        val options = CsvParser.Options.Defaults.copy(maximumLineLength = 3)
+        parse(List("abcd", "ok"), options).either.map { result =>
+          assertTrue(result == Left(CsvParser.Error.LineTooLong(3)))
+        }
+      },
+      test("oversized state") {
+        val options = CsvParser.Options.Defaults.copy(maximumLineLength = 3)
+        parse(List("abcd"), options).either.map { result =>
+          assertTrue(result == Left(CsvParser.Error.LineTooLong(3)))
+        }
+      },
+    ),
     suite("comment prefix")({
       val lines = List(
         "a,b,c",

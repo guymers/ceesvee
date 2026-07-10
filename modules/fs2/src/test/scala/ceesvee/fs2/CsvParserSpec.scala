@@ -21,5 +21,6 @@ object CsvParserSpec extends ZIOSpecDefault with ceesvee.CsvParserParserSuite {
       .compile
       .toList
       .map(Chunk.fromIterable(_))
+      .refineOrDie { case e: CsvParser.Error => e }
   }
 }

@@ -22,7 +22,7 @@ object CsvParserVectorSpec extends ZIOSpecDefault
   override protected def parse(lines: Iterable[String], options: CsvParser.Options) = {
     val input = lines.mkString("\n").grouped(8192).map(_.getBytes(charset))
     val result = CsvParserVector.parse[List](input, options)
-    ZIO.succeed(Chunk.fromIterator(result))
+    ZIO.attempt(Chunk.fromIterator(result)).refineOrDie { case e: CsvParser.Error => e }
   }
 
   override protected def parseLine(line: String, options: CsvParser.Options) = {
