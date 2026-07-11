@@ -86,9 +86,17 @@ object CsvParser {
     in: Iterator[String],
     options: Options,
   )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
-    splitLines(in, options)
-      .filter(str => !ignoreLine(str, options))
-      .map(parseLine(_, options))
+    val lines = splitLines(in, options)
+    val withoutIgnoredLines = if (canIgnoreLines(options)) {
+      lines.filter(str => !ignoreLine(str, options))
+    } else {
+      lines
+    }
+    withoutIgnoredLines.map(parseLine(_, options))
+  }
+
+  private[ceesvee] def canIgnoreLines(options: Options): Boolean = {
+    options.skipBlankRows || options.commentPrefix.exists(_.nonEmpty)
   }
 
   def ignoreLine(line: String, options: Options): Boolean = {
@@ -265,29 +273,6 @@ object CsvParser {
     (State(leftover, insideQuoteIndex = insideQuoteIndex, previousCarriageReturn = previousCarriageReturn), builder.result())
   }
 
-  private case class Slice(start: Int, end: Int)
-  private object Slice {
-    @SuppressWarnings(Array(
-      "org.wartremover.warts.MutableDataStructures",
-      "org.wartremover.warts.NonUnitStatements",
-      "org.wartremover.warts.SeqApply",
-      "org.wartremover.warts.Var",
-      "org.wartremover.warts.While",
-    ))
-    def slice(slices: mutable.ArrayBuffer[Slice], line: String) = {
-      val sb = new mutable.StringBuilder
-      val n = slices.length
-      var i = 0
-      while (i < n) {
-        val slice = slices(i)
-        sb append line.substring(slice.start, slice.end)
-        i = i + 1
-      }
-      slices.clear()
-      sb.result()
-    }
-  }
-
   /**
    * Parse a line into a collection of CSV fields.
    */
@@ -302,79 +287,50 @@ object CsvParser {
     options: Options,
   )(implicit f: Factory[String, C[String]]): C[String] = {
     val fields = f.newBuilder
-
-    val slices = mutable.ArrayBuffer.empty[Slice]
+    val escapedField = new mutable.StringBuilder
+    val delimiter = options.delimiter match {
+      case Options.Delimiter.Comma => ','
+      case Options.Delimiter.Tab => '\t'
+    }
     var sliceStart = 0
-
     var i = 0
     var insideQuote = false
 
     while (i < line.length) {
-      options.delimiter match {
-        case Options.Delimiter.Comma =>
-          (line(i): @switch) match {
-
-            case ',' =>
-              if (!insideQuote) {
-                {
-                  slices.addOne(Slice(sliceStart, i))
-                  fields addOne trimString(options, Slice.slice(slices, line))
-                }
-                i += 1
-                sliceStart = i
-              } else {
-                i += 1
-              }
-
-            case '"' =>
-              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
-                slices.addOne(Slice(sliceStart, i))
-                sliceStart = i + 1
-                i += 2
-              } else {
-                i += 1
-                insideQuote = !insideQuote
-              }
-
-            case _ =>
-              i += 1
-          }
-
-        case Options.Delimiter.Tab =>
-          (line(i): @switch) match {
-
-            case '\t' =>
-              if (!insideQuote) {
-                {
-                  slices.addOne(Slice(sliceStart, i))
-                  fields addOne trimString(options, Slice.slice(slices, line))
-                }
-                i += 1
-                sliceStart = i
-              } else {
-                i += 1
-              }
-
-            case '"' =>
-              if (insideQuote && (i + 1) < line.length && line(i + 1) == '"') { // escaped quote
-                slices.addOne(Slice(sliceStart, i))
-                sliceStart = i + 1
-                i += 2
-              } else {
-                i += 1
-                insideQuote = !insideQuote
-              }
-
-            case _ =>
-              i += 1
-          }
+      val char = line.charAt(i)
+      if (char == delimiter && !insideQuote) {
+        val field = if (escapedField.isEmpty) {
+          line.substring(sliceStart, i)
+        } else {
+          escapedField.append(line.substring(sliceStart, i))
+          val result = escapedField.result()
+          escapedField.clear()
+          result
+        }
+        fields.addOne(trimString(options, field))
+        i += 1
+        sliceStart = i
+      } else if (char == '"') {
+        if (insideQuote && (i + 1) < line.length && line.charAt(i + 1) == '"') {
+          escapedField.append(line.substring(sliceStart, i))
+          sliceStart = i + 1
+          i += 2
+        } else {
+          i += 1
+          insideQuote = !insideQuote
+        }
+      } else {
+        i += 1
       }
     }
 
-    {
-      slices.addOne(Slice(sliceStart, i))
-      fields addOne trimString(options, Slice.slice(slices, line))
+    val field = if (escapedField.isEmpty) {
+      line.substring(sliceStart, i)
+    } else {
+      escapedField.append(line.substring(sliceStart, i))
+      escapedField.result()
     }
+    fields.addOne(trimString(options, field))
 
     fields.result()
   }

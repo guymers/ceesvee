@@ -26,9 +26,13 @@ object CsvParserVector {
     in: Iterator[Array[Byte]],
     options: Options,
   )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
-    splitLines(in, options)
-      .filter(bytes => !CsvParser.ignoreLine(new String(bytes, Utf8), options))
-      .map(parseLine(_, options))
+    val lines = splitLines(in, options)
+    val withoutIgnoredLines = if (CsvParser.canIgnoreLines(options)) {
+      lines.filter(bytes => !CsvParser.ignoreLine(new String(bytes, Utf8), options))
+    } else {
+      lines
+    }
+    withoutIgnoredLines.map(parseLine(_, options))
   }
 
   /**
@@ -117,35 +121,7 @@ object CsvParserVector {
       }
 
       val quotes = vector.eq(Quote)
-      var mask = quotes
-      var betweenQuotes = 0L
-
-      // set all bits between quotes
-      var quoteStart = if (insideQuote) 0 else -1
-      while (mask.anyTrue()) {
-        val r = mask.firstTrue()
-        mask = mask.xor(VectorMask.fromLong(vector.species(), 1L << r))
-
-        if (quoteStart >= 0) {
-          var j = r - 1
-          while (j >= quoteStart) {
-            betweenQuotes = betweenQuotes | (1L << j)
-            j = j - 1
-          }
-          quoteStart = -1
-        } else {
-          quoteStart = r
-        }
-      }
-      if (quoteStart >= 0) {
-        var j = ByteVectorSpecies.length - 1
-        while (j >= quoteStart) {
-          betweenQuotes = betweenQuotes | (1L << j)
-          j = j - 1
-        }
-      }
-
-      val quoteMask = quotes.or(VectorMask.fromLong(vector.species(), betweenQuotes))
+      val quoteMask = VectorMask.fromLong(vector.species(), setAllBitsBetweenQuotes(quotes.toLong, insideQuote))
       insideQuote = (quotes.trueCount() + (if (insideQuote) 1 else 0)) % 2 == 1
 
       val crChars = vector.eq(CarriageReturn)
@@ -229,35 +205,7 @@ object CsvParserVector {
       }
 
       val quotes = vector.eq(Quote)
-      var mask = quotes
-      var betweenQuotes = 0L
-
-      // set all bits between quotes
-      var quoteStart = if (insideQuote) 0 else -1
-      while (mask.anyTrue()) {
-        val r = mask.firstTrue()
-        mask = mask.xor(VectorMask.fromLong(vector.species(), 1L << r))
-
-        if (quoteStart >= 0) {
-          var j = r - 1
-          while (j >= quoteStart) {
-            betweenQuotes = betweenQuotes | (1L << j)
-            j = j - 1
-          }
-          quoteStart = -1
-        } else {
-          quoteStart = r
-        }
-      }
-      if (quoteStart >= 0) {
-        var j = ByteVectorSpecies.length - 1
-        while (j >= quoteStart) {
-          betweenQuotes = betweenQuotes | (1L << j)
-          j = j - 1
-        }
-      }
-
-      val quoteMask = quotes.or(VectorMask.fromLong(vector.species(), betweenQuotes))
+      val quoteMask = VectorMask.fromLong(vector.species(), setAllBitsBetweenQuotes(quotes.toLong, insideQuote))
       insideQuote = (quotes.trueCount() + (if (insideQuote) 1 else 0)) % 2 == 1
 
       val delimiterChars = vector.eq(delimiter)
@@ -277,7 +225,7 @@ object CsvParserVector {
           delimiterIgnoringWithinQuotesBitSet ^ java.lang.Long.lowestOneBit(delimiterIgnoringWithinQuotesBitSet)
 
         val sliceTo = i + r
-        val str = handleField(arraySlice(bytes, sliceStart, sliceTo, i, 0), options)
+        val str = handleField(bytes, sliceStart, sliceTo, options)
         val _ = builder += str
         sliceStart = sliceTo + 1
       }
@@ -285,20 +233,14 @@ object CsvParserVector {
       i = i + ByteVectorSpecies.length
     }
 
-    val remaining = if (sliceStart == 0) {
-      bytes
-    } else {
-      bytes.slice(sliceStart, bytes.length)
-    }
-
-    val str = handleField(remaining, options)
+    val str = handleField(bytes, sliceStart, bytes.length, options)
     val _ = builder += str
 
     builder.result()
   }
 
-  private def handleField(bytes: Array[Byte], options: Options) = {
-    val str = new String(bytes, Utf8)
+  private def handleField(bytes: Array[Byte], from: Int, until: Int, options: Options) = {
+    val str = new String(bytes, from, until - from, Utf8)
     val trimmed = Options.Trim.True.strip(str)
 
     if (trimmed.length >= 2 && trimmed.charAt(0) == '"' && trimmed.charAt(trimmed.length - 1) == '"') {
@@ -306,6 +248,17 @@ object CsvParserVector {
     } else {
       options.trim.strip(str)
     }
+  }
+
+  private def setAllBitsBetweenQuotes(quotes: Long, startsInsideQuote: Boolean) = {
+    var parity = quotes
+    parity = parity ^ (parity << 1)
+    parity = parity ^ (parity << 2)
+    parity = parity ^ (parity << 4)
+    parity = parity ^ (parity << 8)
+    parity = parity ^ (parity << 16)
+    parity = parity ^ (parity << 32)
+    (if (startsInsideQuote) ~parity else parity) | quotes
   }
 
   private def arraySlice(src: Array[Byte], from: Int, to: Int, offset: Int, ignore: Long) = {
