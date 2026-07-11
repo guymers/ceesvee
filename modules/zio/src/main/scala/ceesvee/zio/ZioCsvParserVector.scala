@@ -22,8 +22,14 @@ object ZioCsvParserVector {
   def parse(
     options: CsvParser.Options,
   )(implicit trace: ZIOTrace): ZPipeline[Any, Error, Byte, Chunk[String]] = {
+    val withoutIgnoredLines = if (CsvParser.canIgnoreLines(options)) {
+      ZPipeline.filter[Array[Byte]](bytes => !CsvParser.ignoreLine(new String(bytes, StandardCharsets.UTF_8), options))
+    } else {
+      ZPipeline.identity[Array[Byte]]
+    }
+
     _splitLines(options) >>>
-      ZPipeline.filter[Array[Byte]](bytes => !CsvParser.ignoreLine(new String(bytes, StandardCharsets.UTF_8), options)) >>>
+      withoutIgnoredLines >>>
       ZPipeline.map(parseLine[Chunk](_, options))
   }
 

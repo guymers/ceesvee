@@ -95,13 +95,14 @@ object CsvParser {
     withoutIgnoredLines.map(parseLine(_, options))
   }
 
+  private[ceesvee] def canIgnoreLines(options: Options): Boolean = {
+    options.skipBlankRows || options.commentPrefix.exists(_.nonEmpty)
+  }
+
   def ignoreLine(line: String, options: Options): Boolean = {
     val l = options.trim.strip(line)
     ignoreTrimmedLine(l, options)
   }
-
-  private[ceesvee] def canIgnoreLines(options: Options): Boolean =
-    options.skipBlankRows || options.commentPrefix.exists(_.nonEmpty)
 
   private[ceesvee] def ignoreTrimmedLine(line: String, options: Options): Boolean = {
     isBlank(line, options) || isComment(line, options)
