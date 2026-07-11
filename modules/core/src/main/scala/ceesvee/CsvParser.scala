@@ -87,7 +87,7 @@ object CsvParser {
     options: Options,
   )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
     val lines = splitLines(in, options)
-    val withoutIgnoredLines = if (options.skipBlankRows || options.commentPrefix.exists(_.nonEmpty)) {
+    val withoutIgnoredLines = if (canIgnoreLines(options)) {
       lines.filter(str => !ignoreLine(str, options))
     } else {
       lines
@@ -99,6 +99,9 @@ object CsvParser {
     val l = options.trim.strip(line)
     ignoreTrimmedLine(l, options)
   }
+
+  private[ceesvee] def canIgnoreLines(options: Options): Boolean =
+    options.skipBlankRows || options.commentPrefix.exists(_.nonEmpty)
 
   private[ceesvee] def ignoreTrimmedLine(line: String, options: Options): Boolean = {
     isBlank(line, options) || isComment(line, options)

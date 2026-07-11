@@ -12,6 +12,7 @@ import scala.collection.immutable.ArraySeq
 object Fs2CsvParser {
   import CsvParser.Error
   import CsvParser.State
+  import CsvParser.canIgnoreLines
   import CsvParser.ignoreLine
   import CsvParser.parseLine
   import CsvParser.splitStrings
@@ -25,8 +26,15 @@ object Fs2CsvParser {
   def parse[F[_]: RaiseThrowable](
     options: CsvParser.Options,
   ): fs2Pipe[F, String, ArraySeq[String]] = {
+    val withoutIgnoredLines: fs2Pipe[F, String, String] =
+      if (canIgnoreLines(options)) {
+        _.filter(str => !ignoreLine(str, options))
+      } else {
+        identity
+      }
+
     _.through(splitLines(options))
-      .filter(str => !ignoreLine(str, options))
+      .through(withoutIgnoredLines)
       .map(parseLine[ArraySeq](_, options))
   }
 

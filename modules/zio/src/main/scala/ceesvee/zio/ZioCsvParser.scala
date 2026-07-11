@@ -10,6 +10,7 @@ import ceesvee.CsvParser
 object ZioCsvParser {
   import CsvParser.Error
   import CsvParser.State
+  import CsvParser.canIgnoreLines
   import CsvParser.ignoreLine
   import CsvParser.parseLine
   import CsvParser.splitStrings
@@ -20,8 +21,14 @@ object ZioCsvParser {
   def parse(
     options: CsvParser.Options,
   )(implicit trace: ZIOTrace): ZPipeline[Any, Error, String, Chunk[String]] = {
+    val withoutIgnoredLines = if (canIgnoreLines(options)) {
+      ZPipeline.filter[String](str => !ignoreLine(str, options))
+    } else {
+      ZPipeline.identity[String]
+    }
+
     splitLines(options) >>>
-      ZPipeline.filter[String](str => !ignoreLine(str, options)) >>>
+      withoutIgnoredLines >>>
       ZPipeline.map(parseLine[Chunk](_, options))
   }
 

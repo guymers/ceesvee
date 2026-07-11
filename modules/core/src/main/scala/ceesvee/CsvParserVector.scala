@@ -27,7 +27,7 @@ object CsvParserVector {
     options: Options,
   )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
     val lines = splitLines(in, options)
-    val withoutIgnoredLines = if (options.skipBlankRows || options.commentPrefix.exists(_.nonEmpty)) {
+    val withoutIgnoredLines = if (CsvParser.canIgnoreLines(options)) {
       lines.filter(bytes => !CsvParser.ignoreLine(new String(bytes, Utf8), options))
     } else {
       lines
