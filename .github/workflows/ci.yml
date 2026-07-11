@@ -23,14 +23,12 @@ jobs:
         uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
         with:
           distribution: zulu
-          java-version: '21'
+          java-version: 21
           java-package: jdk
+          cache: sbt
 
       - name: Install SBT
         uses: sbt/setup-sbt@66fb4376e81982c7d92a4074170846fff88e2e30 # v1.5.0
-
-      - name: Cache SBT
-        uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
 
       - name: Lint
         run: sbt --client "++${{ matrix.scala }} scalafmtCheckAll"

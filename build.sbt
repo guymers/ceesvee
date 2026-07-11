@@ -1,7 +1,9 @@
-// format: off
-
+import com.typesafe.tools.mima.core.MissingClassProblem
+import com.typesafe.tools.mima.core.ProblemFilters
 import sbt.util.CacheImplicits.given
 import xsbti.HashedVirtualFileRef
+
+// format: off
 
 val catsVersion = "2.13.0"
 val fs2Version = "3.13.0"
@@ -134,6 +136,11 @@ lazy val core = module("core")
       )
       case _ => Seq.empty
     }),
+    mimaBinaryIssueFilters ++= Seq(
+      // was private
+      ProblemFilters.exclude[MissingClassProblem]("ceesvee.CsvParser$Slice"),
+      ProblemFilters.exclude[MissingClassProblem]("ceesvee.CsvParser$Slice$"),
+    ),
   )
 
 lazy val fs2 = module("fs2")
@@ -182,11 +189,11 @@ ThisBuild / testDataResources := Def.cachedTask {
   val s = streams.value
 
   val dir = (ThisBuild / testDataResourceDirectory).value
-  val files = TestFiles.Csv.toSeq.map  { case (f, (url, hash)) =>
+  val files = TestFiles.Csv.toSeq.map { case (f, (url, hash)) =>
     val file = dir / "csv" / f
     TestFiles.download(s.log, file, url, hash)
     file
-  } ++ TestFiles.Tsv.map  { case (f, (url, hash)) =>
+  } ++ TestFiles.Tsv.map { case (f, (url, hash)) =>
     val file = dir / "tsv" / f
     TestFiles.download(s.log, file, url, hash)
     file
