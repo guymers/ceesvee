@@ -40,7 +40,7 @@ object TestFiles {
 
       log.info(s"Downloading test file: ${file.name}")
 
-      sbt.io.Using.urlInputStream(url(_url).toURL) { in =>
+      sbt.io.Using.urlInputStream(uri(_url).toURL) { in =>
         sbt.io.IO.transfer(in, file)
       }
 
