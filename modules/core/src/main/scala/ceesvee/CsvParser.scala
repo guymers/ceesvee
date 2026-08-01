@@ -145,8 +145,12 @@ object CsvParser {
         }
 
         if (!in.hasNext) {
-          state = State.initial
-          leftover
+          if (leftover.nonEmpty) {
+            state = State.initial
+            leftover
+          } else {
+            throw new NoSuchElementException("next on empty iterator")
+          }
         } else {
           val str = in.next()
           val (newState, lines) = splitStrings(List(str), state)

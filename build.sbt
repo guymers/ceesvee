@@ -13,12 +13,12 @@ val Scala213 = "2.13.18"
 val Scala3 = "3.3.8"
 
 organization := "io.github.guymers"
-homepage := Some(url("https://github.com/guymers/ceesvee"))
+homepage := Some(uri("https://github.com/guymers/ceesvee"))
 licenses := List(License.MIT)
 developers := List(
-  Developer("guymers", "Sam Guymer", "@guymers", url("https://github.com/guymers"))
+  Developer("guymers", "Sam Guymer", "@guymers", uri("https://github.com/guymers"))
 )
-ThisBuild / scmInfo := Some(ScmInfo(url("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git"))
+ThisBuild / scmInfo := Some(ScmInfo(uri("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git"))
 
 lazy val commonSettings = Seq(
   scalaVersion := Scala213,
