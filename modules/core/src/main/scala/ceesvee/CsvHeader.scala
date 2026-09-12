@@ -21,7 +21,7 @@ final class CsvHeader[T] private (
     }
   }
 }
-object CsvHeader {
+object CsvHeader extends CsvHeaderScalaVersion {
 
   final case class MissingHeaders(missing: ::[String])
     extends RuntimeException(s"Missing headers: ${missing.mkString(", ")}")
@@ -38,10 +38,16 @@ object CsvHeader {
   /**
    * A record decoder that decodes fields based on the names of the headers
    * provided.
+   *
+   * The number of headers must equal the number of fields `D` decodes, which is
+   * checked at runtime.
    */
   def create[T](headers: ::[String])(implicit D: CsvRecordDecoder[T]): CsvHeader[T] = {
-    require(headers.sizeIs == D.numFields) // TODO compile time error / better construction
+    createUnsafe(headers, D)
+  }
 
+  private[ceesvee] def createUnsafe[T](headers: ::[String], D: CsvRecordDecoder[T]): CsvHeader[T] = {
+    require(headers.sizeIs == D.numFields)
     new CsvHeader[T](headers, D)
   }
 

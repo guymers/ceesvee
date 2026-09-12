@@ -17,31 +17,34 @@ case class Test(
 ) derives CsvRecordDecoder
 object Test {
   val header = ::("str", List("int", "bool", "opt_int"))
-  val csvHeader = CsvHeader.create(header)(decoder)
+  val csvHeader: CsvHeader[Test] = CsvHeader.create(header)
 }
+```
+
+On Scala 3 the header names can be given as a non-empty tuple of `String`s:
+
+```scala
+val csvHeader: CsvHeader[Test] = CsvHeader.createFromTuple(("str", "int", "bool", "opt_int"))
 ```
 
 `Iterator`
 ```scala
 val input: Iterator[String]
-val result: Either[CsvHeader.MissingHeaders, Iterator[Either[CsvRecordDecoder.Error, Test]]] =
-  CsvParser.decodeWithHeader(input, Test.csvHeader, options)
+val result: Either[CsvHeader.MissingHeaders, Iterator[Either[CsvHeader.Errors, Test]]] =
+  CsvReader.decodeWithHeader(input, Test.csvHeader, options)
 ```
 
 `fs2`
 ```scala
-val stream: fs2.Stream[F[?], String]
-val result: fs2.Stream[F[?], Either[CsvRecordDecoder.Error, Test]] = stream.through {
-  Fs2CsvParser.decodeWithHeader(Test.csvHeader, options)
+val stream: fs2.Stream[F, String]
+val result: fs2.Stream[F, Either[CsvHeader.Errors, Test]] = stream.through {
+  Fs2CsvReader.decodeWithHeader[F, Test](Test.csvHeader, options)
 }
 ```
 
 `zio`
 ```scala
 val stream: zio.stream.ZStream[R, E, String]
-val result: zio.ZIO[
-  Scope & R,
-  Either[Either[E, CsvParser.Error], CsvHeader.MissingHeaders],
-  zio.stream.ZStream[E, Either[E, CsvParser.Error], Either[CsvRecordDecoder.Error, Test]]
-] = ZioCsvParser.decodeWithHeader(stream, Test.csvHeader, options)
+val result: zio.stream.ZStream[R, Either[E, ZioCsvReader.Error], Either[CsvHeader.Errors, Test]] =
+  ZioCsvReader.decodeWithHeader(stream, Test.csvHeader, options)
 ```
