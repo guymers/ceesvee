@@ -6,8 +6,8 @@ import xsbti.HashedVirtualFileRef
 // format: off
 
 val catsVersion = "2.13.0"
-val fs2Version = "3.13.0"
-val zioVersion = "2.1.19"
+val fs2Version = "3.14.0"
+val zioVersion = "2.1.26"
 
 val Scala213 = "2.13.18"
 val Scala3 = "3.3.8"
@@ -147,7 +147,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.1.0.5" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.1.0.14" % Test,
     ),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, _)) => Seq(compilerPlugin(("org.typelevel" % "kind-projector" % "0.13.4").cross(CrossVersion.full)))
@@ -221,8 +221,3 @@ lazy val tests = proj("tests", None)
   )
   .dependsOn(core, fs2, zio)
   .disablePlugins(MimaPlugin)
-
-Global / excludeLintKeys ++= Set(
-  com.github.sbt.git.SbtGit.GitKeys.gitDescribedVersion,
-  com.github.sbt.git.SbtGit.GitKeys.gitUncommittedChanges,
-)

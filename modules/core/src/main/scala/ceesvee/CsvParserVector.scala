@@ -144,9 +144,7 @@ object CsvParserVector {
         val r = java.lang.Long.numberOfTrailingZeros(nlIgnoringWithinQuotesBitSet)
         nlIgnoringWithinQuotesBitSet = nlIgnoringWithinQuotesBitSet ^ java.lang.Long.lowestOneBit(nlIgnoringWithinQuotesBitSet)
 
-        val isPrevCr =
-          (r == 0 && prevCarriageReturn) ||
-          (r > 0 && crIgnoringWithinQuotes.laneIsSet(r - 1))
+        val isPrevCr = (r == 0 && prevCarriageReturn) || (r > 0 && crIgnoringWithinQuotes.laneIsSet(r - 1))
 
         val sliceTo = i + r
         val crFromPreviousChunk = i == 0 && r == 0 && isPrevCr
