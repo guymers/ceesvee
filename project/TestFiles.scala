@@ -18,7 +18,7 @@ object TestFiles {
     // https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads
     "uk-property-sales-price-paid-2019.csv" -> (
       "http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2019.csv",
-      "583876585721de1bda9194410bdf9f9502c87b8d",
+      "5e2abf680e9ce6e68dea758e47cb8ec4004c2c94",
     ),
   )
 

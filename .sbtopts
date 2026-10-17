@@ -1,1 +1,2 @@
 -J-Xmx2000m
+-J-Dsbt.banner=false
