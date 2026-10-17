@@ -1,0 +1,3 @@
+package ceesvee
+
+trait CsvHeaderScalaVersion
