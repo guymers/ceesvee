@@ -15,7 +15,7 @@ case class NZGreenhouseGasEmissions(
   magnitude: String,
   source: String,
   value: BigDecimal,
-)
+) derives CsvRecordDecoder
 object NZGreenhouseGasEmissions {
 
   // note "anzwi" swapped with "anzsic"
@@ -32,6 +32,5 @@ object NZGreenhouseGasEmissions {
     "data_value",
   )
 
-  implicit val decoder: CsvRecordDecoder[NZGreenhouseGasEmissions] = CsvRecordDecoder.derived
-  val csvHeader = CsvHeader.create(header.toCons)(decoder)
+  val csvHeader = CsvHeader.create(header.toCons)
 }

@@ -21,7 +21,7 @@ object Test {
 }
 ```
 
-On Scala 3 the header names can be given as a non-empty tuple of `String`s:
+The header names can also be given as a non-empty tuple of `String`s:
 
 ```scala
 val csvHeader: CsvHeader[Test] = CsvHeader.createFromTuple(("str", "int", "bool", "opt_int"))

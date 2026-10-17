@@ -9,9 +9,6 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     name: Test
-    strategy:
-      matrix:
-        scala: [ 2.13.x, 3.x ]
 
     steps:
       - name: Checkout
@@ -31,10 +28,10 @@ jobs:
         uses: sbt/setup-sbt@ecad189dd245444b9ae0a0cd5922fd938b88906f # v1.5.12
 
       - name: Lint
-        run: sbt --client "++${{ matrix.scala }} scalafmtCheckAll"
+        run: sbt --client scalafmtCheckAll
 
       - name: Compile
-        run: sbt --client "++${{ matrix.scala }} Test/compile"
+        run: sbt --client Test/compile
 
       - name: Test
-        run: sbt --client "++${{ matrix.scala }} test"
+        run: sbt --client test

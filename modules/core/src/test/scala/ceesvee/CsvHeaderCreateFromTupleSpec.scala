@@ -7,7 +7,7 @@ import zio.test.assertTrue
 
 import scala.util.Try
 
-object CsvHeaderScala3Spec extends ZIOSpecDefault {
+object CsvHeaderCreateFromTupleSpec extends ZIOSpecDefault {
   import CsvHeaderSpec.Test
 
   override val spec = suite("CsvHeader")(

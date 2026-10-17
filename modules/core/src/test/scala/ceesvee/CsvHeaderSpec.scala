@@ -7,7 +7,7 @@ import scala.collection.immutable.SortedMap
 
 object CsvHeaderSpec extends ZIOSpecDefault {
 
-  private val header = CsvHeader.create(::("a", List("b", "c")))(Test.decoder)
+  private val header = CsvHeader.create(::("a", List("b", "c")))(using Test.decoder)
 
   override val spec = suite("CsvHeader")(
     test("missing headers") {
@@ -49,6 +49,6 @@ object CsvHeaderSpec extends ZIOSpecDefault {
     c: Boolean,
   )
   object Test {
-    implicit val decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derived
+    given decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derived
   }
 }

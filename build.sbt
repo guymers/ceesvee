@@ -1,4 +1,7 @@
+import com.typesafe.tools.mima.core.DirectMissingMethodProblem
+import com.typesafe.tools.mima.core.InheritedNewAbstractMethodProblem
 import com.typesafe.tools.mima.core.MissingClassProblem
+import com.typesafe.tools.mima.core.MissingTypesProblem
 import com.typesafe.tools.mima.core.ProblemFilters
 import sbt.util.CacheImplicits.given
 import xsbti.HashedVirtualFileRef
@@ -9,9 +12,6 @@ val catsVersion = "2.13.0"
 val fs2Version = "3.14.0"
 val zioVersion = "2.1.26"
 
-val Scala213 = "2.13.18"
-val Scala3 = "3.3.8"
-
 organization := "io.github.guymers"
 homepage := Some(uri("https://github.com/guymers/ceesvee"))
 licenses := List(License.MIT)
@@ -21,54 +21,23 @@ developers := List(
 ThisBuild / scmInfo := Some(ScmInfo(uri("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git"))
 
 lazy val commonSettings = Seq(
-  scalaVersion := Scala213,
-  crossScalaVersions := Seq(Scala213, Scala3),
+  scalaVersion := "3.3.8",
   versionScheme := Some("pvp"),
 
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding", "UTF-8",
+    "-explain",
+    "-explain-types",
     "-feature",
     "-release", "21",
+    "-source:future",
     "-unchecked",
+    "-Wconf:name=PatternMatchExhaustivity:error",
+    "-Wnonunit-statement",
+    "-Wunused:all",
+    "-Wvalue-discard",
   ),
-  scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, _)) => Seq(
-      "-explaintypes",
-      "-language:existentials",
-      "-language:higherKinds",
-      "-Xsource:3",
-    )
-    case _ => Seq(
-      "-explain",
-      "-explain-types",
-      "-no-indent",
-      "-source:future",
-    )
-  }),
-  scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, _)) => Seq(
-      "-Vimplicits",
-      "-Vtype-diffs",
-      "-Wconf:cat=scala3-migration:silent",
-      "-Wdead-code",
-      "-Wextra-implicit",
-      "-Wnonunit-statement",
-      "-Wnumeric-widen",
-      "-Woctal-literal",
-      "-Wunused:_",
-      "-Wperformance",
-      "-Wvalue-discard",
-
-      "-Xlint:_,-byname-implicit", // exclude byname-implicit https://github.com/scala/bug/issues/12072
-    )
-    case _ => Seq(
-      "-Wconf:name=PatternMatchExhaustivity:error",
-      "-Wnonunit-statement",
-      "-Wunused:all",
-      "-Wvalue-discard",
-    )
-  }),
 
   Compile / console / scalacOptions ~= filterScalacConsoleOpts,
   Test / console / scalacOptions ~= filterScalacConsoleOpts,
@@ -128,19 +97,6 @@ lazy val core = module("core")
       "org.typelevel" %% "cats-laws" % catsVersion % Test,
       "org.typelevel" %% "discipline-munit" % "2.0.0" % Test,
     ),
-    libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, _)) => Seq(
-        "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.10",
-        "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        "com.chuusai" %% "shapeless" % "2.3.13" % Test,
-      )
-      case _ => Seq.empty
-    }),
-    mimaBinaryIssueFilters ++= Seq(
-      // was private
-      ProblemFilters.exclude[MissingClassProblem]("ceesvee.CsvParser$Slice"),
-      ProblemFilters.exclude[MissingClassProblem]("ceesvee.CsvParser$Slice$"),
-    ),
   )
 
 lazy val fs2 = module("fs2")
@@ -149,10 +105,6 @@ lazy val fs2 = module("fs2")
       "co.fs2" %% "fs2-core" % fs2Version,
       "dev.zio" %% "zio-interop-cats" % "23.1.0.14" % Test,
     ),
-    libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, _)) => Seq(compilerPlugin(("org.typelevel" % "kind-projector" % "0.13.4").cross(CrossVersion.full)))
-      case _ => Seq.empty
-    }),
   )
   .dependsOn(core % "compile->compile;test->test")
 

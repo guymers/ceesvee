@@ -10,21 +10,15 @@ import ceesvee.CsvParser
 import ceesvee.CsvReader
 import ceesvee.CsvRecordDecoder
 
-import scala.util.control.NoStackTrace
-
 object ZioCsvReader {
 
-  // replace with a union instead of redefining when removing Scala 2 support
-  sealed trait Error
+  type Error = CsvParser.Error.LineTooLong | CsvHeader.MissingHeaders
   object Error {
-    final case class LineTooLong(maximum: Int)
-      extends RuntimeException(s"CSV line exceeded maximum length of ${maximum.toString}")
-      with Error
+    type LineTooLong = CsvParser.Error.LineTooLong
+    type MissingHeaders = CsvHeader.MissingHeaders
 
-    final case class MissingHeaders(missing: ::[String])
-      extends RuntimeException(s"Missing headers: ${missing.mkString(", ")}")
-      with NoStackTrace
-      with Error
+    val LineTooLong: CsvParser.Error.LineTooLong.type = CsvParser.Error.LineTooLong
+    val MissingHeaders: CsvHeader.MissingHeaders.type = CsvHeader.MissingHeaders
   }
 
   /**
@@ -37,7 +31,7 @@ object ZioCsvReader {
     stream: ZStream[R, E, String],
     header: CsvHeader[T],
     options: CsvReader.Options,
-  )(implicit
+  )(using
     trace: ZIOTrace,
   ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = {
     decodeWithHeader_(stream, header)(ZioCsvParser.parse(options))
@@ -49,27 +43,26 @@ object ZioCsvReader {
     header: CsvHeader[T],
   )(
     parse: ZPipeline[Any, CsvParser.Error, A, Chunk[String]],
-  )(implicit
+  )(using
     trace: ZIOTrace,
   ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = ZStream.suspend {
     var decoder: CsvHeader.Decoder[T] = null
 
     stream.mapError(Left(_)).via {
       parse.mapError {
-        case CsvParser.Error.LineTooLong(maximum) => Right(Error.LineTooLong(maximum))
+        case e: CsvParser.Error.LineTooLong => Right(e)
       }
     }.map { fields =>
       if (decoder eq null) {
-        decoder = header.create(fields).left.map {
-          case CsvHeader.MissingHeaders(missing) => Error.MissingHeaders(missing)
-        }.toTry.get
+        decoder = header.create(fields).toTry.get
         null
       } else {
         decoder.decode(fields)
       }
     }.filter(_ ne null).catchSomeCause {
-      case Cause.Die(e: Error, _) => ZStream.fail(Right(e))
-    } ++ (if (decoder eq null) ZStream.fail(Right(Error.MissingHeaders(header.headers))) else ZStream.empty)
+      case Cause.Die(e: CsvParser.Error.LineTooLong, _) => ZStream.fail(Right(e))
+      case Cause.Die(e: CsvHeader.MissingHeaders, _) => ZStream.fail(Right(e))
+    } ++ (if (decoder eq null) ZStream.fail(Right(CsvHeader.MissingHeaders(header.headers))) else ZStream.empty)
   }
 
   /**
@@ -77,7 +70,7 @@ object ZioCsvReader {
    */
   def decode[T](
     options: CsvReader.Options,
-  )(implicit
+  )(using
     D: CsvRecordDecoder[T],
     trace: ZIOTrace,
   ): ZPipeline[Any, CsvParser.Error, String, Either[CsvRecordDecoder.Errors, T]] = {

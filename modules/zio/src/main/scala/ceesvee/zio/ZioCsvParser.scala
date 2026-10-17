@@ -20,7 +20,7 @@ object ZioCsvParser {
    */
   def parse(
     options: CsvParser.Options,
-  )(implicit trace: ZIOTrace): ZPipeline[Any, Error, String, Chunk[String]] = {
+  )(using trace: ZIOTrace): ZPipeline[Any, Error, String, Chunk[String]] = {
     val withoutIgnoredLines = if (canIgnoreLines(options)) {
       ZPipeline.filter[String](str => !ignoreLine(str, options))
     } else {
@@ -39,7 +39,7 @@ object ZioCsvParser {
    */
   def splitLines(
     options: CsvParser.Options,
-  )(implicit trace: ZIOTrace): ZPipeline[Any, CsvParser.Error, String, String] = ZPipeline.fromPush {
+  )(using trace: ZIOTrace): ZPipeline[Any, CsvParser.Error, String, String] = ZPipeline.fromPush {
     Ref.make(State.initial).map { stateRef => (chunk: Option[Chunk[String]]) =>
       (chunk match {
         case None =>

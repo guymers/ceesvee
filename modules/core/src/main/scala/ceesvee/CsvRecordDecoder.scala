@@ -77,9 +77,9 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
     }
   }
 
-  def apply[T](implicit D: CsvRecordDecoder[T]): CsvRecordDecoder[T] = D
+  def apply[T](using D: CsvRecordDecoder[T]): CsvRecordDecoder[T] = D
 
-  private[ceesvee] def createField[T](implicit D: => CsvFieldDecoder[T]): CsvRecordDecoder[T] = {
+  private[ceesvee] def createField[T](using D: => CsvFieldDecoder[T]): CsvRecordDecoder[T] = {
     new CsvRecordDecoder[T] {
       override val numFields = 1
       @SuppressWarnings(Array("org.wartremover.warts.IterableOps"))
@@ -94,7 +94,7 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
     }
   }
 
-  private[ceesvee] def createFieldOptional[T](implicit D: => CsvFieldDecoder[T]): CsvRecordDecoder[Option[T]] = {
+  private[ceesvee] def createFieldOptional[T](using D: => CsvFieldDecoder[T]): CsvRecordDecoder[Option[T]] = {
     new CsvRecordDecoder[Option[T]] {
       override val numFields = 1
       @SuppressWarnings(Array("org.wartremover.warts.IterableOps"))
@@ -117,25 +117,25 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
 // cache common field record decoders
 sealed trait CsvRecordDecoder1 extends CsvRecordDecoder2 { self: CsvRecordDecoder.type =>
 
-  implicit val fieldString: CsvRecordDecoder[String] = createField[String]
-  implicit val fieldBoolean: CsvRecordDecoder[Boolean] = createField[Boolean]
-  implicit val fieldInt: CsvRecordDecoder[Int] = createField[Int]
-  implicit val fieldLong: CsvRecordDecoder[Long] = createField[Long]
-  implicit val fieldFloat: CsvRecordDecoder[Float] = createField[Float]
-  implicit val fieldDouble: CsvRecordDecoder[Double] = createField[Double]
+  given fieldString: CsvRecordDecoder[String] = createField[String]
+  given fieldBoolean: CsvRecordDecoder[Boolean] = createField[Boolean]
+  given fieldInt: CsvRecordDecoder[Int] = createField[Int]
+  given fieldLong: CsvRecordDecoder[Long] = createField[Long]
+  given fieldFloat: CsvRecordDecoder[Float] = createField[Float]
+  given fieldDouble: CsvRecordDecoder[Double] = createField[Double]
 
-  implicit val fieldOptionalString: CsvRecordDecoder[Option[String]] = createFieldOptional[String]
-  implicit val fieldOptionalBoolean: CsvRecordDecoder[Option[Boolean]] = createFieldOptional[Boolean]
-  implicit val fieldOptionalInt: CsvRecordDecoder[Option[Int]] = createFieldOptional[Int]
-  implicit val fieldOptionalLong: CsvRecordDecoder[Option[Long]] = createFieldOptional[Long]
-  implicit val fieldOptionalFloat: CsvRecordDecoder[Option[Float]] = createFieldOptional[Float]
-  implicit val fieldOptionalDouble: CsvRecordDecoder[Option[Double]] = createFieldOptional[Double]
+  given fieldOptionalString: CsvRecordDecoder[Option[String]] = createFieldOptional[String]
+  given fieldOptionalBoolean: CsvRecordDecoder[Option[Boolean]] = createFieldOptional[Boolean]
+  given fieldOptionalInt: CsvRecordDecoder[Option[Int]] = createFieldOptional[Int]
+  given fieldOptionalLong: CsvRecordDecoder[Option[Long]] = createFieldOptional[Long]
+  given fieldOptionalFloat: CsvRecordDecoder[Option[Float]] = createFieldOptional[Float]
+  given fieldOptionalDouble: CsvRecordDecoder[Option[Double]] = createFieldOptional[Double]
 }
 
 sealed trait CsvRecordDecoder2 extends CsvRecordDecoder3 { self: CsvRecordDecoder.type =>
 
-  implicit def field[T](implicit D: CsvFieldDecoder[T]): CsvRecordDecoder[T] = createField[T]
-  implicit def fieldOptional[T](implicit D: CsvFieldDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
+  given field[T](using D: CsvFieldDecoder[T]): CsvRecordDecoder[T] = createField[T]
+  given fieldOptional[T](using D: CsvFieldDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
     val _ = ev
     createFieldOptional[T]
   }
@@ -143,7 +143,7 @@ sealed trait CsvRecordDecoder2 extends CsvRecordDecoder3 { self: CsvRecordDecode
 
 sealed trait CsvRecordDecoder3 extends CsvRecordDecoder4 { self: CsvRecordDecoder.type =>
 
-  implicit def optional[T](implicit D: CsvRecordDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
+  given optional[T](using D: CsvRecordDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
     val _ = ev
 
     new CsvRecordDecoder[Option[T]] {
@@ -160,10 +160,10 @@ sealed trait CsvRecordDecoder3 extends CsvRecordDecoder4 { self: CsvRecordDecode
   }
 }
 
-sealed trait CsvRecordDecoder4 extends CsvRecordDecoderDeriveScalaVersion { self: CsvRecordDecoder.type =>
+sealed trait CsvRecordDecoder4 extends CsvRecordDecoderDerive { self: CsvRecordDecoder.type =>
 
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
-  implicit def ApplyCsvRecordDecoder[F[_[_]]](implicit env: CatsApply[F]): F[CsvRecordDecoder] = {
+  given ApplyCsvRecordDecoder[F[_[_]]](using env: CatsApply[F]): F[CsvRecordDecoder] = {
     val _ = env
 
     new cats.Apply[CsvRecordDecoder] {
@@ -179,5 +179,5 @@ sealed trait CsvRecordDecoder4 extends CsvRecordDecoderDeriveScalaVersion { self
 final abstract class CatsApply[F[_[_]]]
 object CatsApply {
   @SuppressWarnings(Array("org.wartremover.warts.Null"))
-  @inline implicit final def get: CatsApply[cats.Apply] = null
+  @inline given get: CatsApply[cats.Apply] = null
 }

@@ -46,30 +46,18 @@ object CsvParser {
       delimiter = delimiter,
     )
 
-    sealed abstract class Delimiter extends Serializable with Product
-    object Delimiter {
-      case object Comma extends Delimiter
-      case object Tab extends Delimiter
+    enum Delimiter extends Serializable with Product {
+      case Comma, Tab
     }
 
-    sealed abstract class Trim {
-      def strip(str: String): String
-    }
-    object Trim {
-      case object True extends Trim {
-        override def strip(str: String) = str.strip
-      }
+    enum Trim extends Serializable {
+      case True, False, Start, End
 
-      case object False extends Trim {
-        override def strip(str: String) = str
-      }
-
-      case object Start extends Trim {
-        override def strip(str: String) = str.stripLeading
-      }
-
-      case object End extends Trim {
-        override def strip(str: String) = str.stripTrailing
+      def strip(str: String): String = this match {
+        case True => str.strip
+        case False => str
+        case Start => str.stripLeading
+        case End => str.stripTrailing
       }
     }
   }
@@ -85,7 +73,7 @@ object CsvParser {
   def parse[C[_]](
     in: Iterator[String],
     options: Options,
-  )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
+  )(using f: Factory[String, C[String]]): Iterator[C[String]] = {
     val lines = splitLines(in, options)
     val withoutIgnoredLines = if (canIgnoreLines(options)) {
       lines.filter(str => !ignoreLine(str, options))
@@ -195,7 +183,7 @@ object CsvParser {
   def splitStrings[C[S] <: Iterable[S]](
     strings: C[String],
     state: State,
-  )(implicit f: Factory[String, C[String]]): (State, C[String]) = {
+  )(using f: Factory[String, C[String]]): (State, C[String]) = {
     val builder = f.newBuilder
     var insideQuoteIndex = state.insideQuoteIndex
     var previousCarriageReturn = state.previousCarriageReturn
@@ -289,7 +277,7 @@ object CsvParser {
   def parseLine[C[_]](
     line: String,
     options: Options,
-  )(implicit f: Factory[String, C[String]]): C[String] = {
+  )(using f: Factory[String, C[String]]): C[String] = {
     val fields = f.newBuilder
     val escapedField = new mutable.StringBuilder
     val delimiter = options.delimiter match {

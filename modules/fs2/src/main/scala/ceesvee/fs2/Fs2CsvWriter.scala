@@ -12,7 +12,7 @@ object Fs2CsvWriter {
   def encodeWithHeader[F[_], A](
     header: Iterable[String],
     rows: Stream[F, A],
-  )(implicit E: CsvRecordEncoder[A]): Stream[F, String] = {
+  )(using E: CsvRecordEncoder[A]): Stream[F, String] = {
     Stream.emit(fieldsToLine(header)) ++ encode(rows)
   }
 
@@ -21,7 +21,7 @@ object Fs2CsvWriter {
    */
   def encode[F[_], A](
     rows: Stream[F, A],
-  )(implicit E: CsvRecordEncoder[A]): Stream[F, String] = {
+  )(using E: CsvRecordEncoder[A]): Stream[F, String] = {
     rows.map(E.encode(_)).map(fieldsToLine(_))
   }
 }

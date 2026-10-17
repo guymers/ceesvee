@@ -91,25 +91,27 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
   ) @@ TestAspect.timeout(60.seconds) @@ TestAspect.timed
 
   private def assertTotal[T](fileName: String, decoder: CsvRecordDecoder[T], total: Long) = {
+    given D: CsvRecordDecoder[T] = decoder
+
     val resource = s"csv/$fileName"
 
     List(
       test("scala") {
         val result = readResource(resource) { input =>
-          CsvReader.decode(input, options)(decoder).count(_.isRight).toLong
+          CsvReader.decode[T](input, options).count(_.isRight).toLong
         }
         assertTrue(result == total)
       },
       test("fs2") {
         val io = readResourceFs2(resource).through(fs2.text.utf8.decode).through {
-          Fs2CsvReader.decode[IO, T](options)(implicitly, decoder)
+          Fs2CsvReader.decode[IO, T](options)
         }.collect { case Right(v) => v }.compile.count
         catsIoToZio(io).map { count =>
           assertTrue(count == total)
         }
       },
       test("zio") {
-        val pipeline = ZioCsvReader.decode(options)(decoder, implicitly).mapError {
+        val pipeline = ZioCsvReader.decode[T](options).mapError {
           case e: CsvParser.Error.LineTooLong => e
         }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
         readResourceZio(resource).via(ZPipeline.utfDecode).via(pipeline).runCount.map { count =>
@@ -117,7 +119,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         }
       },
       test("zio vector") {
-        val pipeline = ZioCsvReaderVector.decode(options)(decoder, implicitly).mapError {
+        val pipeline = ZioCsvReaderVector.decode[T](options).mapError {
           case e: CsvParser.Error.LineTooLong => e
         }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
         readResourceZio(resource).via(pipeline).runCount.map { count =>

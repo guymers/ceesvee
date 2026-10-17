@@ -144,11 +144,11 @@ case class TestCustomError(
   int: Int,
 )
 object TestCustomError {
-  implicit val decoder: CsvRecordDecoder[TestCustomError] = CsvRecordDecoder.derived[TestCustomError].emap { v =>
+  given decoder: CsvRecordDecoder[TestCustomError] = CsvRecordDecoder.derived[TestCustomError].emap { v =>
     if (v.int == 0) Left("int cannot be 0")
     else Right(v)
   }
-  implicit val encoder: CsvRecordEncoder[TestCustomError] = CsvRecordEncoder.derived
+  given encoder: CsvRecordEncoder[TestCustomError] = CsvRecordEncoder.derived
 }
 
 case class TestCustomErrorNested(
@@ -157,7 +157,7 @@ case class TestCustomErrorNested(
   int: Int,
 )
 object TestCustomErrorNested {
-  implicit val decoder: CsvRecordDecoder[TestCustomErrorNested] = CsvRecordDecoder.derived
+  given decoder: CsvRecordDecoder[TestCustomErrorNested] = CsvRecordDecoder.derived
 }
 
 case class TestOptionalNestedObject(
@@ -167,6 +167,6 @@ case class TestOptionalNestedObject(
   intOpt: Option[Int],
 )
 object TestOptionalNestedObject {
-  implicit val decoder: CsvRecordDecoder[TestOptionalNestedObject] = CsvRecordDecoder.derived
-  implicit val encoder: CsvRecordEncoder[TestOptionalNestedObject] = CsvRecordEncoder.derived
+  given decoder: CsvRecordDecoder[TestOptionalNestedObject] = CsvRecordDecoder.derived
+  given encoder: CsvRecordEncoder[TestOptionalNestedObject] = CsvRecordEncoder.derived
 }

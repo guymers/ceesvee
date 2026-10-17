@@ -20,34 +20,34 @@ trait CsvFieldEncoder[A] { self =>
 
 object CsvFieldEncoder {
 
-  def apply[A](implicit D: CsvFieldEncoder[A]): CsvFieldEncoder[A] = D
+  def apply[A](using D: CsvFieldEncoder[A]): CsvFieldEncoder[A] = D
 
   def instance[A](f: A => String): CsvFieldEncoder[A] = f(_)
 
   @SuppressWarnings(Array("org.wartremover.warts.ToString"))
   def fromToString[A]: CsvFieldEncoder[A] = instance(_.toString)
 
-  implicit val string: CsvFieldEncoder[String] = instance(identity(_))
+  given string: CsvFieldEncoder[String] = instance(identity(_))
 
-  implicit val boolean: CsvFieldEncoder[Boolean] = instance {
+  given boolean: CsvFieldEncoder[Boolean] = instance {
     case true => "true"
     case false => "false"
   }
 
-  implicit val int: CsvFieldEncoder[Int] = fromToString
-  implicit val long: CsvFieldEncoder[Long] = fromToString
-  implicit val float: CsvFieldEncoder[Float] = fromToString
-  implicit val double: CsvFieldEncoder[Double] = fromToString
-  implicit val bigDecimal: CsvFieldEncoder[BigDecimal] = fromToString
+  given int: CsvFieldEncoder[Int] = fromToString
+  given long: CsvFieldEncoder[Long] = fromToString
+  given float: CsvFieldEncoder[Float] = fromToString
+  given double: CsvFieldEncoder[Double] = fromToString
+  given bigDecimal: CsvFieldEncoder[BigDecimal] = fromToString
 
-  implicit val localDate: CsvFieldEncoder[LocalDate] = fromToString
-  implicit val localDateTime: CsvFieldEncoder[LocalDateTime] = fromToString
-  implicit val localTime: CsvFieldEncoder[LocalTime] = fromToString
-  implicit val instant: CsvFieldEncoder[Instant] = fromToString
-  implicit val offsetDateTime: CsvFieldEncoder[OffsetDateTime] = fromToString
-  implicit val zonedDateTime: CsvFieldEncoder[ZonedDateTime] = fromToString
-  implicit val zoneId: CsvFieldEncoder[ZoneId] = instance(_.getId)
+  given localDate: CsvFieldEncoder[LocalDate] = fromToString
+  given localDateTime: CsvFieldEncoder[LocalDateTime] = fromToString
+  given localTime: CsvFieldEncoder[LocalTime] = fromToString
+  given instant: CsvFieldEncoder[Instant] = fromToString
+  given offsetDateTime: CsvFieldEncoder[OffsetDateTime] = fromToString
+  given zonedDateTime: CsvFieldEncoder[ZonedDateTime] = fromToString
+  given zoneId: CsvFieldEncoder[ZoneId] = instance(_.getId)
 
-  implicit val uri: CsvFieldEncoder[URI] = fromToString
-  implicit val uuid: CsvFieldEncoder[UUID] = fromToString
+  given uri: CsvFieldEncoder[URI] = fromToString
+  given uuid: CsvFieldEncoder[UUID] = fromToString
 }

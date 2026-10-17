@@ -10,7 +10,7 @@ object CsvWriter {
   def encodeWithHeader[T](
     header: Iterable[String],
     rows: Iterator[T],
-  )(implicit E: CsvRecordEncoder[T]): Iterator[String] = {
+  )(using E: CsvRecordEncoder[T]): Iterator[String] = {
     Iterator(fieldsToLine(header)) ++ encode(rows)
   }
 
@@ -19,7 +19,7 @@ object CsvWriter {
    */
   def encode[T](
     rows: Iterator[T],
-  )(implicit E: CsvRecordEncoder[T]): Iterator[String] = {
+  )(using E: CsvRecordEncoder[T]): Iterator[String] = {
     rows.map(E.encode(_)).map(fieldsToLine(_))
   }
 

@@ -70,7 +70,7 @@ object Fs2CsvReader {
    */
   def decode[F[_], T](
     options: CsvReader.Options,
-  )(implicit F: RaiseThrowable[F], D: CsvRecordDecoder[T]): Pipe[F, String, Either[CsvRecordDecoder.Errors, T]] = {
+  )(using F: RaiseThrowable[F], D: CsvRecordDecoder[T]): Pipe[F, String, Either[CsvRecordDecoder.Errors, T]] = {
     _.through(parse(options)).map(D.decode(_))
   }
 }

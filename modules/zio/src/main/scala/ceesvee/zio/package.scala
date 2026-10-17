@@ -1,6 +1,5 @@
-package ceesvee
+package ceesvee.zio
 
-package object zio {
+import ceesvee.CsvParser
 
-  type Error[E] = Either[E, CsvParser.Error]
-}
+type Error[E] = Either[E, CsvParser.Error]

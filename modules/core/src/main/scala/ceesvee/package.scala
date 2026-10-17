@@ -1,4 +1,3 @@
-package object ceesvee {
+package ceesvee
 
-  def VectorAPIAvailable: Boolean = ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent
-}
+def VectorAPIAvailable: Boolean = ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent

@@ -15,7 +15,7 @@ object ZioCsvReaderSpec extends ZIOSpecDefault {
   private val decodeWithHeaderSuite = suite("decode with header")(
     test("no rows") {
       ZioCsvReader.decodeWithHeader(ZStream.empty, Test.header, options).runCollect.either.map { result =>
-        assertTrue(result == Left(Right(ZioCsvReader.Error.MissingHeaders(::("a", List("b", "c"))))))
+        assertTrue(result == Left(Right(CsvHeader.MissingHeaders(::("a", List("b", "c"))))))
       }
     },
     test("only header row") {
@@ -27,7 +27,7 @@ object ZioCsvReaderSpec extends ZIOSpecDefault {
     test("invalid header row") {
       val stream = ZStream.succeed("a,b,d")
       ZioCsvReader.decodeWithHeader(stream, Test.header, options).runCollect.either.map { result =>
-        assertTrue(result == Left(Right(ZioCsvReader.Error.MissingHeaders(::("c", Nil)))))
+        assertTrue(result == Left(Right(CsvHeader.MissingHeaders(::("c", Nil)))))
       }
     },
     test("valid") {
@@ -59,8 +59,8 @@ object ZioCsvReaderSpec extends ZIOSpecDefault {
     c: Boolean,
   )
   object Test {
-    implicit val decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derived
+    given decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derived
 
-    val header: CsvHeader[Test] = CsvHeader.create(::("a", List("b", "c")))(decoder)
+    val header: CsvHeader[Test] = CsvHeader.create(::("a", List("b", "c")))(using decoder)
   }
 }
