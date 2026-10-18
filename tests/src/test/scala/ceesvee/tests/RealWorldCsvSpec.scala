@@ -86,30 +86,30 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
     }*),
     suite("UK property sales 2019")({
       val total = 1012236L
-      assertTotal("uk-property-sales-price-paid-2019.csv", UkPropertySalesPricePaid.decoder, total)
+      assertTotal[UkPropertySalesPricePaid]("uk-property-sales-price-paid-2019.csv", total)
     }*),
   ) @@ TestAspect.timeout(60.seconds) @@ TestAspect.timed
 
-  private def assertTotal[T](fileName: String, decoder: CsvRecordDecoder[T], total: Long) = {
+  private def assertTotal[T](fileName: String, total: Long)(using decoder: CsvRecordDecoder[T]) = {
     val resource = s"csv/$fileName"
 
     List(
       test("scala") {
         val result = readResource(resource) { input =>
-          CsvReader.decode(input, options)(decoder).count(_.isRight).toLong
+          CsvReader.decode[T](input, options).count(_.isRight).toLong
         }
         assertTrue(result == total)
       },
       test("fs2") {
         val io = readResourceFs2(resource).through(fs2.text.utf8.decode).through {
-          Fs2CsvReader.decode[IO, T](options)(implicitly, decoder)
+          Fs2CsvReader.decode[IO, T](options)
         }.collect { case Right(v) => v }.compile.count
         catsIoToZio(io).map { count =>
           assertTrue(count == total)
         }
       },
       test("zio") {
-        val pipeline = ZioCsvReader.decode(options)(decoder, implicitly).mapError {
+        val pipeline = ZioCsvReader.decode[T](options).mapError {
           case e: CsvParser.Error.LineTooLong => e
         }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
         readResourceZio(resource).via(ZPipeline.utfDecode).via(pipeline).runCount.map { count =>
@@ -117,7 +117,7 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
         }
       },
       test("zio vector") {
-        val pipeline = ZioCsvReaderVector.decode(options)(decoder, implicitly).mapError {
+        val pipeline = ZioCsvReaderVector.decode[T](options).mapError {
           case e: CsvParser.Error.LineTooLong => e
         }.andThen(ZPipeline.mapZIO(ZIO.fromEither(_)))
         readResourceZio(resource).via(pipeline).runCount.map { count =>

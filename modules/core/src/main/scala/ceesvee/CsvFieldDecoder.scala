@@ -31,16 +31,16 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
     extends RuntimeException(s"Failed to decode ${raw.take(64)} because: $reason")
     with NoStackTrace
 
-  def apply[A](implicit D: CsvFieldDecoder[A]): CsvFieldDecoder[A] = D
+  def apply[A](using D: CsvFieldDecoder[A]): CsvFieldDecoder[A] = D
 
   def instance[A](f: String => Either[Error, A]): CsvFieldDecoder[A] = f(_)
 
-  implicit val string: CsvFieldDecoder[String] = instance(Right(_))
+  given string: CsvFieldDecoder[String] = instance(Right(_))
 
   // "true", "t", "yes", "y" are true
   // "false", "f", "no", "n" are false
   // anything else is an error
-  implicit val boolean: CsvFieldDecoder[Boolean] = {
+  given boolean: CsvFieldDecoder[Boolean] = {
     val trues = SortedSet("true", "t", "yes", "y")
     val falses = SortedSet("false", "f", "no", "n")
 
@@ -55,10 +55,10 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
     }
   }
 
-  implicit val int: CsvFieldDecoder[Int] = instanceNumberFormat("int")(_.toInt)
-  implicit val long: CsvFieldDecoder[Long] = instanceNumberFormat("long")(_.toLong)
-  implicit val float: CsvFieldDecoder[Float] = instanceNumberFormat("float")(_.toFloat)
-  implicit val double: CsvFieldDecoder[Double] = instanceNumberFormat("double")(_.toDouble)
+  given int: CsvFieldDecoder[Int] = instanceNumberFormat("int")(_.toInt)
+  given long: CsvFieldDecoder[Long] = instanceNumberFormat("long")(_.toLong)
+  given float: CsvFieldDecoder[Float] = instanceNumberFormat("float")(_.toFloat)
+  given double: CsvFieldDecoder[Double] = instanceNumberFormat("double")(_.toDouble)
   private def instanceNumberFormat[T](typeName: String)(to: String => T): CsvFieldDecoder[T] = instance { str =>
     try {
       Right(to(str))
@@ -67,17 +67,17 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
     }
   }
 
-  implicit val localDate: CsvFieldDecoder[LocalDate] =
+  given localDate: CsvFieldDecoder[LocalDate] =
     instanceDateTimeParse("date", "2021-12-03")(LocalDate.parse(_))
-  implicit val localDateTime: CsvFieldDecoder[LocalDateTime] =
+  given localDateTime: CsvFieldDecoder[LocalDateTime] =
     instanceDateTimeParse("date time", "2021-12-03T10:15:30")(LocalDateTime.parse(_))
-  implicit val localTime: CsvFieldDecoder[LocalTime] =
+  given localTime: CsvFieldDecoder[LocalTime] =
     instanceDateTimeParse("time", "10:15:30")(LocalTime.parse(_))
-  implicit val instant: CsvFieldDecoder[Instant] =
+  given instant: CsvFieldDecoder[Instant] =
     instanceDateTimeParse("instant", "2021-12-03T10:15:30.00Z")(Instant.parse(_))
-  implicit val offsetDateTime: CsvFieldDecoder[OffsetDateTime] =
+  given offsetDateTime: CsvFieldDecoder[OffsetDateTime] =
     instanceDateTimeParse("date time with offset", "2021-12-03T10:15:30+01:00")(OffsetDateTime.parse(_))
-  implicit val zonedDateTime: CsvFieldDecoder[ZonedDateTime] =
+  given zonedDateTime: CsvFieldDecoder[ZonedDateTime] =
     instanceDateTimeParse("date time with timezone", "2021-12-03T10:15:30+01:00[Europe/Paris]")(ZonedDateTime.parse(_))
 
   private val DateTimeParseSpecificExceptionPrefix = "^Text '.*' could not be parsed: (.*)".r
@@ -99,7 +99,7 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
       }
     }
 
-  implicit val zoneId: CsvFieldDecoder[ZoneId] = instance { str =>
+  given zoneId: CsvFieldDecoder[ZoneId] = instance { str =>
     try {
       Right(ZoneId.of(str))
     } catch {
@@ -108,8 +108,8 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
     }
   }
 
-  implicit val uri: CsvFieldDecoder[URI] = instanceIllegalArgument(URI.create(_))
-  implicit val uuid: CsvFieldDecoder[UUID] = instanceIllegalArgument(UUID.fromString(_))
+  given uri: CsvFieldDecoder[URI] = instanceIllegalArgument(URI.create(_))
+  given uuid: CsvFieldDecoder[UUID] = instanceIllegalArgument(UUID.fromString(_))
 
   def instanceIllegalArgument[T](parse: String => T): CsvFieldDecoder[T] = instance { str =>
     try {
@@ -122,7 +122,7 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
 
 sealed trait CsvFieldDecoder1 { self: CsvFieldDecoder.type =>
 
-  implicit def numeric[T](implicit N: Numeric[T]): CsvFieldDecoder[T] = instance { str =>
+  given numeric[T](using N: Numeric[T]): CsvFieldDecoder[T] = instance { str =>
     N.parseString(str).toRight(Error(str, "invalid numeric value"))
   }
 }

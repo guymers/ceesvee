@@ -18,9 +18,9 @@ trait CsvRecordEncoder[A] { self =>
 }
 object CsvRecordEncoder extends CsvRecordEncoder1 {
 
-  def apply[T](implicit E: CsvRecordEncoder[T]): CsvRecordEncoder[T] = E
+  def apply[T](using E: CsvRecordEncoder[T]): CsvRecordEncoder[T] = E
 
-  private[ceesvee] def createField[T](implicit E: => CsvFieldEncoder[T]): CsvRecordEncoder[T] = {
+  private[ceesvee] def createField[T](using E: => CsvFieldEncoder[T]): CsvRecordEncoder[T] = {
     new CsvRecordEncoder[T] {
       override val numFields = 1
       override def encode(t: T) = IndexedSeq(E.encode(t))
@@ -31,23 +31,22 @@ object CsvRecordEncoder extends CsvRecordEncoder1 {
 // cache common field record encoders
 sealed trait CsvRecordEncoder1 extends CsvRecordEncoder2 { self: CsvRecordEncoder.type =>
 
-  implicit val fieldString: CsvRecordEncoder[String] = createField[String]
-  implicit val fieldBoolean: CsvRecordEncoder[Boolean] = createField[Boolean]
-  implicit val fieldInt: CsvRecordEncoder[Int] = createField[Int]
-  implicit val fieldLong: CsvRecordEncoder[Long] = createField[Long]
-  implicit val fieldFloat: CsvRecordEncoder[Float] = createField[Float]
-  implicit val fieldDouble: CsvRecordEncoder[Double] = createField[Double]
+  given fieldString: CsvRecordEncoder[String] = createField[String]
+  given fieldBoolean: CsvRecordEncoder[Boolean] = createField[Boolean]
+  given fieldInt: CsvRecordEncoder[Int] = createField[Int]
+  given fieldLong: CsvRecordEncoder[Long] = createField[Long]
+  given fieldFloat: CsvRecordEncoder[Float] = createField[Float]
+  given fieldDouble: CsvRecordEncoder[Double] = createField[Double]
 }
 
 sealed trait CsvRecordEncoder2 extends CsvRecordEncoder3 { self: CsvRecordEncoder.type =>
 
-  implicit def field[T](implicit E: CsvFieldEncoder[T]): CsvRecordEncoder[T] = createField[T]
+  given field[T](using CsvFieldEncoder[T]): CsvRecordEncoder[T] = createField[T]
 }
 
 sealed trait CsvRecordEncoder3 extends CsvRecordEncoder4 { self: CsvRecordEncoder.type =>
 
-  implicit def optional[T](implicit E: CsvRecordEncoder[T], ev: T <:!< Option[?]): CsvRecordEncoder[Option[T]] = {
-    val _ = ev
+  given optional[T](using E: CsvRecordEncoder[T], ev: T <:!< Option[?]): CsvRecordEncoder[Option[T]] = {
     val empty = IndexedSeq.fill(E.numFields)("")
 
     new CsvRecordEncoder[Option[T]] {
@@ -57,14 +56,12 @@ sealed trait CsvRecordEncoder3 extends CsvRecordEncoder4 { self: CsvRecordEncode
   }
 }
 
-sealed trait CsvRecordEncoder4 extends CsvRecordEncoderDeriveScalaVersion { self: CsvRecordEncoder.type =>
+sealed trait CsvRecordEncoder4 extends CsvRecordEncoderDerive { self: CsvRecordEncoder.type =>
 
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
-  implicit def ContravariantSemigroupalCsvRecordEncoder[F[_[_]]](implicit
-    env: CatsContravariantSemigroupal[F],
+  given ContravariantSemigroupalCsvRecordEncoder[F[_[_]]](using
+    CatsContravariantSemigroupal[F],
   ): F[CsvRecordEncoder] = {
-    val _ = env
-
     new cats.ContravariantSemigroupal[CsvRecordEncoder] {
       override def contramap[A, B](fa: CsvRecordEncoder[A])(f: B => A) = fa.contramap(f)
       override def product[A, B](fa: CsvRecordEncoder[A], fb: CsvRecordEncoder[B]) = fa.product(fb)
@@ -76,5 +73,5 @@ sealed trait CsvRecordEncoder4 extends CsvRecordEncoderDeriveScalaVersion { self
 final abstract class CatsContravariantSemigroupal[F[_[_]]]
 object CatsContravariantSemigroupal {
   @SuppressWarnings(Array("org.wartremover.warts.Null"))
-  @inline implicit final def get: CatsContravariantSemigroupal[cats.ContravariantSemigroupal] = null
+  @inline given get: CatsContravariantSemigroupal[cats.ContravariantSemigroupal] = null
 }

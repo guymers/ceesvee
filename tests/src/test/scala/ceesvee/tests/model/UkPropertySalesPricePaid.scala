@@ -17,12 +17,12 @@ case class UkPropertySalesPricePaid(
   address: UkPropertySalesPricePaid.Address,
   category: UkPropertySalesPricePaid.PropertyCategory,
   status: String,
-)
+) derives CsvRecordDecoder
 object UkPropertySalesPricePaid {
 
   case class Identifier(value: UUID) extends AnyVal
   object Identifier {
-    implicit val csvFieldDecoder: CsvFieldDecoder[Identifier] = {
+    given csvFieldDecoder: CsvFieldDecoder[Identifier] = {
       CsvFieldDecoder.instance { str =>
         val s = str.stripPrefix("{").stripSuffix("}")
         CsvFieldDecoder.uuid.decode(s)
@@ -30,15 +30,15 @@ object UkPropertySalesPricePaid {
     }
   }
 
-  sealed abstract class PropertyType(val value: String)
+  enum PropertyType(val value: String) {
+    case Detached extends PropertyType("D")
+    case SemiDetached extends PropertyType("S")
+    case Terraced extends PropertyType("T")
+    case Flats extends PropertyType("F")
+    case Other extends PropertyType("O")
+  }
   object PropertyType {
-    case object Detached extends PropertyType("D")
-    case object SemiDetached extends PropertyType("S")
-    case object Terraced extends PropertyType("T")
-    case object Flats extends PropertyType("F")
-    case object Other extends PropertyType("O")
-
-    implicit val csvFieldDecoder: CsvFieldDecoder[PropertyType] = {
+    given csvFieldDecoder: CsvFieldDecoder[PropertyType] = {
       CsvFieldDecoder.instance {
         case Detached.value => Right(Detached)
         case SemiDetached.value => Right(SemiDetached)
@@ -50,12 +50,12 @@ object UkPropertySalesPricePaid {
     }
   }
 
-  sealed abstract class PropertyAge(val value: String)
+  enum PropertyAge(val value: String) {
+    case New extends PropertyAge("Y")
+    case Established extends PropertyAge("N")
+  }
   object PropertyAge {
-    case object New extends PropertyAge("Y")
-    case object Established extends PropertyAge("N")
-
-    implicit val csvFieldDecoder: CsvFieldDecoder[PropertyAge] = {
+    given csvFieldDecoder: CsvFieldDecoder[PropertyAge] = {
       CsvFieldDecoder.instance {
         case New.value => Right(New)
         case Established.value => Right(Established)
@@ -64,12 +64,12 @@ object UkPropertySalesPricePaid {
     }
   }
 
-  sealed abstract class PropertyTenure(val value: String)
+  enum PropertyTenure(val value: String) {
+    case Freehold extends PropertyTenure("F")
+    case Leasehold extends PropertyTenure("L")
+  }
   object PropertyTenure {
-    case object Freehold extends PropertyTenure("F")
-    case object Leasehold extends PropertyTenure("L")
-
-    implicit val csvFieldDecoder: CsvFieldDecoder[PropertyTenure] = {
+    given csvFieldDecoder: CsvFieldDecoder[PropertyTenure] = {
       CsvFieldDecoder.instance {
         case Freehold.value => Right(Freehold)
         case Leasehold.value => Right(Leasehold)
@@ -78,12 +78,12 @@ object UkPropertySalesPricePaid {
     }
   }
 
-  sealed abstract class PropertyCategory(val value: String)
+  enum PropertyCategory(val value: String) {
+    case Additional extends PropertyCategory("A")
+    case Leasehold extends PropertyCategory("B")
+  }
   object PropertyCategory {
-    case object Additional extends PropertyCategory("A")
-    case object Leasehold extends PropertyCategory("B")
-
-    implicit val csvFieldDecoder: CsvFieldDecoder[PropertyCategory] = {
+    given csvFieldDecoder: CsvFieldDecoder[PropertyCategory] = {
       CsvFieldDecoder.instance {
         case Additional.value => Right(Additional)
         case Leasehold.value => Right(Leasehold)
@@ -100,17 +100,12 @@ object UkPropertySalesPricePaid {
     townCity: String,
     district: String,
     county: String,
-  )
-  object Address {
-    implicit val decoder: CsvRecordDecoder[Address] = CsvRecordDecoder.derived
-  }
+  ) derives CsvRecordDecoder
 
-  implicit val decoderLocalDate: CsvFieldDecoder[LocalDate] = {
+  given decoderLocalDate: CsvFieldDecoder[LocalDate] = {
     CsvFieldDecoder.instance { str =>
       val s = str.take(10) // "2019-01-14 00:00"
       CsvFieldDecoder.localDate.decode(s)
     }
   }
-
-  implicit val decoder: CsvRecordDecoder[UkPropertySalesPricePaid] = CsvRecordDecoder.derived
 }

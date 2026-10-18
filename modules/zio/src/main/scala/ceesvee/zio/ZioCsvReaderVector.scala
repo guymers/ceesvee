@@ -20,9 +20,7 @@ object ZioCsvReaderVector {
     stream: ZStream[R, E, Byte],
     header: CsvHeader[T],
     options: CsvReader.Options,
-  )(implicit
-    trace: ZIOTrace,
-  ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = {
+  )(using ZIOTrace): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = {
     val parse = ZioCsvParserVector.parse(options)
     ZioCsvReader.decodeWithHeader_(stream, header)(parse)
   }
@@ -32,10 +30,7 @@ object ZioCsvReaderVector {
    */
   def decode[T](
     options: CsvReader.Options,
-  )(implicit
-    D: CsvRecordDecoder[T],
-    trace: ZIOTrace,
-  ): ZPipeline[Any, CsvParser.Error, Byte, Either[CsvRecordDecoder.Errors, T]] = {
+  )(using D: CsvRecordDecoder[T], trace: ZIOTrace): ZPipeline[Any, CsvParser.Error, Byte, Either[CsvRecordDecoder.Errors, T]] = {
     ZioCsvParserVector.parse(options) >>> ZPipeline.map(D.decode(_))
   }
 }

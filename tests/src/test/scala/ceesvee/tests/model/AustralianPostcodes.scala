@@ -8,11 +8,10 @@ case class AustralianPostcodes(
   suburb: String,
   state: String,
   postcode: Int,
-)
+) derives CsvRecordDecoder
 object AustralianPostcodes {
 
   val header = NonEmptyChunk("Suburb", "State", "Zip")
 
-  implicit val decoder: CsvRecordDecoder[AustralianPostcodes] = CsvRecordDecoder.derived
-  val csvHeader = CsvHeader.create(header.toCons)(decoder)
+  val csvHeader = CsvHeader.create(header.toCons)
 }

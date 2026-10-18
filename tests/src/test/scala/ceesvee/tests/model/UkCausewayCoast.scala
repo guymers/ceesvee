@@ -14,12 +14,11 @@ case class UkCausewayCoast(
   town: String,
   postcode: String,
   website: URI,
-)
+) derives CsvRecordDecoder
 object UkCausewayCoast {
 
   // note ignoring "OBJECTID" header, "Town" swapped with "Postcode"
   val header = NonEmptyChunk("X", "Y", "Name", "Address", "Town", "Postcode", "Website")
 
-  implicit val decoder: CsvRecordDecoder[UkCausewayCoast] = CsvRecordDecoder.derived
-  val csvHeader = CsvHeader.create(header.toCons)(decoder)
+  val csvHeader = CsvHeader.create(header.toCons)
 }

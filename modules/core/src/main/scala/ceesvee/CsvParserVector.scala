@@ -25,7 +25,7 @@ object CsvParserVector {
   def parse[C[_]](
     in: Iterator[Array[Byte]],
     options: Options,
-  )(implicit f: Factory[String, C[String]]): Iterator[C[String]] = {
+  )(using f: Factory[String, C[String]]): Iterator[C[String]] = {
     val lines = splitLines(in, options)
     val withoutIgnoredLines = if (CsvParser.canIgnoreLines(options)) {
       lines.filter(bytes => !CsvParser.ignoreLine(new String(bytes, Utf8), options))
@@ -102,7 +102,7 @@ object CsvParserVector {
   private[ceesvee] def splitBytes[C[S] <: Iterable[S]](
     bytes: Array[Byte],
     state: State,
-  )(implicit f: Factory[Array[Byte], C[Array[Byte]]]): (State, C[Array[Byte]]) = {
+  )(using f: Factory[Array[Byte], C[Array[Byte]]]): (State, C[Array[Byte]]) = {
 
     val builder = f.newBuilder
     var insideQuote = state.insideQuote
@@ -181,7 +181,7 @@ object CsvParserVector {
   private[ceesvee] def parseLine[C[_]](
     bytes: Array[Byte],
     options: Options,
-  )(implicit f: Factory[String, C[String]]): C[String] = {
+  )(using f: Factory[String, C[String]]): C[String] = {
 
     val builder = f.newBuilder
     var insideQuote = false

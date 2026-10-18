@@ -232,9 +232,9 @@ object CsvFieldSpec extends ZIOSpecDefault {
     suite("uri")(
       test("valid") {
         val valid = List(
-          new URI("https://example.com"),
-          new URI("https://example.com/path"),
-          new URI("https://example.com/path?query=q"),
+          URI.create("https://example.com"),
+          URI.create("https://example.com/path"),
+          URI.create("https://example.com/path?query=q"),
         )
         valid.foldLeft(assertCompletes) { case (a, uri) =>
           a && assertGolden(uri)

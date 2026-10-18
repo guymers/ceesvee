@@ -16,12 +16,12 @@ final class CsvHeader[T] private (
     }
 
     missing.sorted match {
-      case Nil => Right(CsvHeader.Decoder.create(headers, ordering)(D))
+      case Nil => Right(CsvHeader.Decoder.create(headers, ordering)(using D))
       case m @ ::(_, _) => Left(CsvHeader.MissingHeaders(m))
     }
   }
 }
-object CsvHeader extends CsvHeaderScalaVersion {
+object CsvHeader {
 
   final case class MissingHeaders(missing: ::[String])
     extends RuntimeException(s"Missing headers: ${missing.mkString(", ")}")
@@ -42,8 +42,27 @@ object CsvHeader extends CsvHeaderScalaVersion {
    * The number of headers must equal the number of fields `D` decodes, which is
    * checked at runtime.
    */
-  def create[T](headers: ::[String])(implicit D: CsvRecordDecoder[T]): CsvHeader[T] = {
+  def create[T](headers: ::[String])(using D: CsvRecordDecoder[T]): CsvHeader[T] = {
     createUnsafe(headers, D)
+  }
+
+  /**
+   * A record decoder that decodes fields based on the names of the headers
+   * provided.
+   *
+   * The number of headers must equal the number of fields `D` decodes, which is
+   * checked at runtime.
+   */
+  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+  def createFromTuple[T, H <: Tuple](headers: H)(using
+    D: CsvRecordDecoder[T],
+    evNonEmpty: H <:< NonEmptyTuple,
+    evAllStrings: Tuple.Union[H] <:< String,
+  ): CsvHeader[T] = {
+    val nonEmpty: NonEmptyTuple = evNonEmpty(headers)
+    val cons = ::(nonEmpty.head.asInstanceOf[String], nonEmpty.tail.toList.asInstanceOf[List[String]])
+
+    createUnsafe(cons, D)
   }
 
   private[ceesvee] def createUnsafe[T](headers: ::[String], D: CsvRecordDecoder[T]): CsvHeader[T] = {
@@ -67,7 +86,7 @@ object CsvHeader extends CsvHeaderScalaVersion {
     private[ceesvee] def create[T](
       headers: ::[String],
       ordering: Seq[Int],
-    )(implicit D: CsvRecordDecoder[T]): Decoder[T] = {
+    )(using D: CsvRecordDecoder[T]): Decoder[T] = {
 
       val length = ordering.length
       val headerIndices = ordering.zip(headers)

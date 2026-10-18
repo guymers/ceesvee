@@ -87,7 +87,7 @@ object CsvReader {
   def decode[T](
     in: Iterator[String],
     options: Options,
-  )(implicit D: CsvRecordDecoder[T]): Iterator[Either[CsvRecordDecoder.Errors, T]] = {
+  )(using D: CsvRecordDecoder[T]): Iterator[Either[CsvRecordDecoder.Errors, T]] = {
     parse[IndexedSeq](in, options).map(fields => D.decode(fields))
   }
 }
