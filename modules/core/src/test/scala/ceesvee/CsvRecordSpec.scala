@@ -13,7 +13,6 @@ object CsvRecordSpec extends ZIOSpecDefault {
   override val spec = suite("CsvRecord")(
     test("valid") {
       val t = Test("a str", None, 123, 123.45f, bool = true, Some(5))
-      val _ = Test.decoder
       val encoded = CsvRecordEncoder[Test].encode(t)
       val decoded = CsvRecordDecoder[Test].decode(encoded)
       assertTrue(decoded == Right(t))
@@ -155,18 +154,11 @@ case class TestCustomErrorNested(
   str: String,
   inner: TestCustomError,
   int: Int,
-)
-object TestCustomErrorNested {
-  given decoder: CsvRecordDecoder[TestCustomErrorNested] = CsvRecordDecoder.derived
-}
+) derives CsvRecordDecoder
 
 case class TestOptionalNestedObject(
   str: String,
   nested: Option[Test],
   int: Int,
   intOpt: Option[Int],
-)
-object TestOptionalNestedObject {
-  given decoder: CsvRecordDecoder[TestOptionalNestedObject] = CsvRecordDecoder.derived
-  given encoder: CsvRecordEncoder[TestOptionalNestedObject] = CsvRecordEncoder.derived
-}
+) derives CsvRecordDecoder, CsvRecordEncoder

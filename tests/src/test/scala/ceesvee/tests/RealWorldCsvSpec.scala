@@ -86,13 +86,11 @@ object RealWorldCsvSpec extends ZIOSpecDefault {
     }*),
     suite("UK property sales 2019")({
       val total = 1012236L
-      assertTotal("uk-property-sales-price-paid-2019.csv", UkPropertySalesPricePaid.decoder, total)
+      assertTotal[UkPropertySalesPricePaid]("uk-property-sales-price-paid-2019.csv", total)
     }*),
   ) @@ TestAspect.timeout(60.seconds) @@ TestAspect.timed
 
-  private def assertTotal[T](fileName: String, decoder: CsvRecordDecoder[T], total: Long) = {
-    given D: CsvRecordDecoder[T] = decoder
-
+  private def assertTotal[T](fileName: String, total: Long)(using decoder: CsvRecordDecoder[T]) = {
     val resource = s"csv/$fileName"
 
     List(

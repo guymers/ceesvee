@@ -41,13 +41,12 @@ sealed trait CsvRecordEncoder1 extends CsvRecordEncoder2 { self: CsvRecordEncode
 
 sealed trait CsvRecordEncoder2 extends CsvRecordEncoder3 { self: CsvRecordEncoder.type =>
 
-  given field[T](using E: CsvFieldEncoder[T]): CsvRecordEncoder[T] = createField[T]
+  given field[T](using CsvFieldEncoder[T]): CsvRecordEncoder[T] = createField[T]
 }
 
 sealed trait CsvRecordEncoder3 extends CsvRecordEncoder4 { self: CsvRecordEncoder.type =>
 
   given optional[T](using E: CsvRecordEncoder[T], ev: T <:!< Option[?]): CsvRecordEncoder[Option[T]] = {
-    val _ = ev
     val empty = IndexedSeq.fill(E.numFields)("")
 
     new CsvRecordEncoder[Option[T]] {
@@ -61,10 +60,8 @@ sealed trait CsvRecordEncoder4 extends CsvRecordEncoderDerive { self: CsvRecordE
 
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
   given ContravariantSemigroupalCsvRecordEncoder[F[_[_]]](using
-    env: CatsContravariantSemigroupal[F],
+    CatsContravariantSemigroupal[F],
   ): F[CsvRecordEncoder] = {
-    val _ = env
-
     new cats.ContravariantSemigroupal[CsvRecordEncoder] {
       override def contramap[A, B](fa: CsvRecordEncoder[A])(f: B => A) = fa.contramap(f)
       override def product[A, B](fa: CsvRecordEncoder[A], fb: CsvRecordEncoder[B]) = fa.product(fb)

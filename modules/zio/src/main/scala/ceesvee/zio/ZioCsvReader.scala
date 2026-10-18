@@ -15,9 +15,9 @@ object ZioCsvReader {
   type Error = CsvParser.Error.LineTooLong | CsvHeader.MissingHeaders
   object Error {
     type LineTooLong = CsvParser.Error.LineTooLong
-    type MissingHeaders = CsvHeader.MissingHeaders
-
     val LineTooLong: CsvParser.Error.LineTooLong.type = CsvParser.Error.LineTooLong
+
+    type MissingHeaders = CsvHeader.MissingHeaders
     val MissingHeaders: CsvHeader.MissingHeaders.type = CsvHeader.MissingHeaders
   }
 
@@ -31,9 +31,7 @@ object ZioCsvReader {
     stream: ZStream[R, E, String],
     header: CsvHeader[T],
     options: CsvReader.Options,
-  )(using
-    trace: ZIOTrace,
-  ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = {
+  )(using ZIOTrace): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = {
     decodeWithHeader_(stream, header)(ZioCsvParser.parse(options))
   }
 
@@ -43,9 +41,7 @@ object ZioCsvReader {
     header: CsvHeader[T],
   )(
     parse: ZPipeline[Any, CsvParser.Error, A, Chunk[String]],
-  )(using
-    trace: ZIOTrace,
-  ): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = ZStream.suspend {
+  )(using ZIOTrace): ZStream[R, Either[E, Error], Either[CsvHeader.Errors, T]] = ZStream.suspend {
     var decoder: CsvHeader.Decoder[T] = null
 
     stream.mapError(Left(_)).via {
@@ -70,10 +66,7 @@ object ZioCsvReader {
    */
   def decode[T](
     options: CsvReader.Options,
-  )(using
-    D: CsvRecordDecoder[T],
-    trace: ZIOTrace,
-  ): ZPipeline[Any, CsvParser.Error, String, Either[CsvRecordDecoder.Errors, T]] = {
+  )(using D: CsvRecordDecoder[T], trace: ZIOTrace): ZPipeline[Any, CsvParser.Error, String, Either[CsvRecordDecoder.Errors, T]] = {
     ZioCsvParser.parse(options) >>> ZPipeline.map(D.decode(_))
   }
 }

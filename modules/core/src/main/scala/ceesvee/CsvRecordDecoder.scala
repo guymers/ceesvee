@@ -134,18 +134,14 @@ sealed trait CsvRecordDecoder1 extends CsvRecordDecoder2 { self: CsvRecordDecode
 
 sealed trait CsvRecordDecoder2 extends CsvRecordDecoder3 { self: CsvRecordDecoder.type =>
 
-  given field[T](using D: CsvFieldDecoder[T]): CsvRecordDecoder[T] = createField[T]
-  given fieldOptional[T](using D: CsvFieldDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
-    val _ = ev
+  given field[T](using CsvFieldDecoder[T]): CsvRecordDecoder[T] = createField[T]
+  given fieldOptional[T](using CsvFieldDecoder[T], T <:!< Option[?]): CsvRecordDecoder[Option[T]] =
     createFieldOptional[T]
-  }
 }
 
 sealed trait CsvRecordDecoder3 extends CsvRecordDecoder4 { self: CsvRecordDecoder.type =>
 
   given optional[T](using D: CsvRecordDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
-    val _ = ev
-
     new CsvRecordDecoder[Option[T]] {
       override val numFields = D.numFields
       @SuppressWarnings(Array("org.wartremover.warts.Null"))
@@ -163,9 +159,7 @@ sealed trait CsvRecordDecoder3 extends CsvRecordDecoder4 { self: CsvRecordDecode
 sealed trait CsvRecordDecoder4 extends CsvRecordDecoderDerive { self: CsvRecordDecoder.type =>
 
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
-  given ApplyCsvRecordDecoder[F[_[_]]](using env: CatsApply[F]): F[CsvRecordDecoder] = {
-    val _ = env
-
+  given ApplyCsvRecordDecoder[F[_[_]]](using CatsApply[F]): F[CsvRecordDecoder] = {
     new cats.Apply[CsvRecordDecoder] {
       override def map[A, B](fa: CsvRecordDecoder[A])(f: A => B) = fa.map(f)
       override def ap[A, B](ff: CsvRecordDecoder[A => B])(fa: CsvRecordDecoder[A]) = fa.ap(ff)

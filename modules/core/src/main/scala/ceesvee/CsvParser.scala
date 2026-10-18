@@ -50,7 +50,7 @@ object CsvParser {
       case Comma, Tab
     }
 
-    enum Trim extends Serializable {
+    enum Trim extends Serializable with Product {
       case True, False, Start, End
 
       def strip(str: String): String = this match {

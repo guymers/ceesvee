@@ -17,7 +17,7 @@ case class UkPropertySalesPricePaid(
   address: UkPropertySalesPricePaid.Address,
   category: UkPropertySalesPricePaid.PropertyCategory,
   status: String,
-)
+) derives CsvRecordDecoder
 object UkPropertySalesPricePaid {
 
   case class Identifier(value: UUID) extends AnyVal
@@ -108,6 +108,4 @@ object UkPropertySalesPricePaid {
       CsvFieldDecoder.localDate.decode(s)
     }
   }
-
-  given decoder: CsvRecordDecoder[UkPropertySalesPricePaid] = CsvRecordDecoder.derived
 }

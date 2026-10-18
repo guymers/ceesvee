@@ -9,5 +9,5 @@ case class TestDecodeScala(
   optInt: Option[Int],
 )
 object TestDecodeScala {
-  given decoder: ceesvee.CsvRecordDecoder[TestDecodeScala] = ceesvee.CsvRecordDecoder.derived
+  val decoder: ceesvee.CsvRecordDecoder[TestDecodeScala] = ceesvee.CsvRecordDecoder.derived
 }

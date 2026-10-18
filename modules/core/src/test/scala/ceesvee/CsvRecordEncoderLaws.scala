@@ -18,35 +18,29 @@ class CsvRecordEncoderLaws extends DisciplineSuite {
 
 object CsvRecordEncoderLaws {
 
-  case class A(v: Boolean)
+  case class A(v: Boolean) derives CsvRecordEncoder
   object A {
     val instance = A(v = true)
-
-    given encoder: CsvRecordEncoder[A] = CsvRecordEncoder.derived
   }
 
-  case class B(v: Int)
+  case class B(v: Int) derives CsvRecordEncoder
   object B {
     val instance = B(42)
-
-    given encoder: CsvRecordEncoder[B] = CsvRecordEncoder.derived
   }
 
-  case class C(v: String)
+  case class C(v: String) derives CsvRecordEncoder
   object C {
     val instance = C("a string")
-
-    given encoder: CsvRecordEncoder[C] = CsvRecordEncoder.derived
   }
 
   given arbitraryA: Arbitrary[A] = Arbitrary { Arbitrary.arbBool.arbitrary.map(A(_)) }
-  given arbitraryFA: Arbitrary[CsvRecordEncoder[A]] = Arbitrary { Gen.const(A.encoder) }
+  given arbitraryFA: Arbitrary[CsvRecordEncoder[A]] = Arbitrary { Gen.const(CsvRecordEncoder[A]) }
 
   given arbitraryB: Arbitrary[B] = Arbitrary { Arbitrary.arbInt.arbitrary.map(B(_)) }
-  given arbitraryFB: Arbitrary[CsvRecordEncoder[B]] = Arbitrary { Gen.const(B.encoder) }
+  given arbitraryFB: Arbitrary[CsvRecordEncoder[B]] = Arbitrary { Gen.const(CsvRecordEncoder[B]) }
 
   given arbitraryC: Arbitrary[C] = Arbitrary { Arbitrary.arbString.arbitrary.map(C(_)) }
-  given arbitraryFC: Arbitrary[CsvRecordEncoder[C]] = Arbitrary { Gen.const(C.encoder) }
+  given arbitraryFC: Arbitrary[CsvRecordEncoder[C]] = Arbitrary { Gen.const(CsvRecordEncoder[C]) }
 
   given cogenA: Cogen[A] = Cogen.cogenBoolean.contramap(_.v)
   given cogenB: Cogen[B] = Cogen.cogenInt.contramap(_.v)

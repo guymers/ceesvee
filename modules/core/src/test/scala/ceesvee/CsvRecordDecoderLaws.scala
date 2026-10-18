@@ -18,29 +18,18 @@ class CsvRecordDecoderLaws extends DisciplineSuite {
 
 object CsvRecordDecoderLaws {
 
-  case class A(v: Boolean)
-  object A {
-    given decoder: CsvRecordDecoder[A] = CsvRecordDecoder.derived
-  }
-
-  case class B(v: Int)
-  object B {
-    given decoder: CsvRecordDecoder[B] = CsvRecordDecoder.derived
-  }
-
-  case class C(v: String)
-  object C {
-    given decoder: CsvRecordDecoder[C] = CsvRecordDecoder.derived
-  }
+  case class A(v: Boolean) derives CsvRecordDecoder
+  case class B(v: Int) derives CsvRecordDecoder
+  case class C(v: String) derives CsvRecordDecoder
 
   given arbitraryA: Arbitrary[A] = Arbitrary { Arbitrary.arbBool.arbitrary.map(A(_)) }
-  given arbitraryFA: Arbitrary[CsvRecordDecoder[A]] = Arbitrary { Gen.const(A.decoder) }
+  given arbitraryFA: Arbitrary[CsvRecordDecoder[A]] = Arbitrary { Gen.const(CsvRecordDecoder[A]) }
 
   given arbitraryB: Arbitrary[B] = Arbitrary { Arbitrary.arbInt.arbitrary.map(B(_)) }
-  given arbitraryFB: Arbitrary[CsvRecordDecoder[B]] = Arbitrary { Gen.const(B.decoder) }
+  given arbitraryFB: Arbitrary[CsvRecordDecoder[B]] = Arbitrary { Gen.const(CsvRecordDecoder[B]) }
 
   given arbitraryC: Arbitrary[C] = Arbitrary { Arbitrary.arbString.arbitrary.map(C(_)) }
-  given arbitraryFC: Arbitrary[CsvRecordDecoder[C]] = Arbitrary { Gen.const(C.decoder) }
+  given arbitraryFC: Arbitrary[CsvRecordDecoder[C]] = Arbitrary { Gen.const(CsvRecordDecoder[C]) }
 
   // these instances are bullshit
   given arbitraryFAB: Arbitrary[CsvRecordDecoder[A => B]] = Arbitrary {

@@ -1,9 +1,3 @@
-import com.typesafe.tools.mima.core.DirectMissingMethodProblem
-import com.typesafe.tools.mima.core.InheritedNewAbstractMethodProblem
-import com.typesafe.tools.mima.core.MissingClassProblem
-import com.typesafe.tools.mima.core.MissingTypesProblem
-import com.typesafe.tools.mima.core.ProblemFilters
-import sbt.util.CacheImplicits.given
 import xsbti.HashedVirtualFileRef
 
 // format: off

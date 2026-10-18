@@ -57,10 +57,8 @@ object ZioCsvReaderSpec extends ZIOSpecDefault {
     a: String,
     b: Int,
     c: Boolean,
-  )
+  ) derives CsvRecordDecoder
   object Test {
-    given decoder: CsvRecordDecoder[Test] = CsvRecordDecoder.derived
-
-    val header: CsvHeader[Test] = CsvHeader.create(::("a", List("b", "c")))(using decoder)
+    val header: CsvHeader[Test] = CsvHeader.create(::("a", List("b", "c")))
   }
 }

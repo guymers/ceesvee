@@ -1,6 +1,6 @@
 ### ceeSvee
 
-A CSV library designed for use with steams. Can be used with `Iterator`, `fs2.Stream` and `zio.stream.ZStream`.
+A Scala 3 CSV library designed for use with steams. Can be used with `Iterator`, `fs2.Stream` and `zio.stream.ZStream`.
 
 Supports the CSV format described by [Model for Tabular Data and Metadata on the Web](https://www.w3.org/TR/2015/REC-tabular-data-model-20151217/#ebnf):
 - a new line can be `\n` or `\r\n`
