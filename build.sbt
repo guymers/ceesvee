@@ -14,28 +14,40 @@ developers := List(
 )
 ThisBuild / scmInfo := Some(ScmInfo(uri("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git"))
 
-lazy val commonSettings = Seq(
-  scalaVersion := "3.3.8",
-  versionScheme := Some("pvp"),
+scalaVersion := "3.3.8"
+versionScheme := Some("pvp")
 
-  scalacOptions ++= Seq(
-    "-deprecation",
-    "-encoding", "UTF-8",
-    "-explain",
-    "-explain-types",
-    "-feature",
-    "-release", "21",
-    "-source:future",
-    "-unchecked",
-    "-Wconf:name=PatternMatchExhaustivity:error",
-    "-Wnonunit-statement",
-    "-Wunused:all",
-    "-Wvalue-discard",
-  ),
+scalacOptions ++= Seq(
+  "-deprecation",
+  "-encoding", "UTF-8",
+  "-explain",
+  "-explain-types",
+  "-feature",
+  "-release", "21",
+  "-source:future",
+  "-unchecked",
+  "-Wconf:name=PatternMatchExhaustivity:error",
+  "-Wnonunit-statement",
+  "-Wunused:all",
+  "-Wvalue-discard",
+)
 
-  Compile / console / scalacOptions ~= filterScalacConsoleOpts,
-  Test / console / scalacOptions ~= filterScalacConsoleOpts,
+// Maven Central requires a javadoc jar for each published module. Scala 3 scaladoc jars are
+// ~2.7 MB each because they bundle the whole documentation site (fonts, scripts, etc.), which
+// adds ~8 MB to every release. Publish an empty jar instead to stay under the monthly upload
+// limit; this also skips generating scaladoc during the release.
+Compile / packageDoc / mappings := Seq.empty
 
+Compile / console / scalacOptions ~= filterScalacConsoleOpts
+Test / console / scalacOptions ~= filterScalacConsoleOpts
+
+def filterScalacConsoleOpts(options: Seq[String]) = {
+  options.filterNot { opt =>
+    opt == "-Xfatal-warnings" || opt.startsWith("-Xlint") || opt.startsWith("-W")
+  }
+}
+
+lazy val wartremoverSettings = Seq(
   Compile / compile / wartremoverErrors := Warts.all,
   Compile / compile / wartremoverErrors --= Seq(
     Wart.Any,
@@ -51,12 +63,6 @@ lazy val commonSettings = Seq(
   ),
 )
 
-def filterScalacConsoleOpts(options: Seq[String]) = {
-  options.filterNot { opt =>
-    opt == "-Xfatal-warnings" || opt.startsWith("-Xlint") || opt.startsWith("-W")
-  }
-}
-
 lazy val zioTestSettings = Seq(
   libraryDependencies ++= Seq(
     "dev.zio" %% "zio-test" % zioVersion % Test,
@@ -67,7 +73,7 @@ lazy val zioTestSettings = Seq(
 def proj(name: String, dir: Option[String]) =
   Project(name, file(dir.map(d => s"$d/$name").getOrElse(name)))
     .settings(moduleName := s"ceesvee-$name")
-    .settings(commonSettings)
+    .settings(wartremoverSettings)
 
 def module(name: String) = proj(name, Some("modules"))
   .settings(zioTestSettings)
@@ -76,7 +82,7 @@ def module(name: String) = proj(name, Some("modules"))
   )
 
 lazy val ceesvee = project.in(file("."))
-  .settings(commonSettings)
+  .settings(wartremoverSettings)
   .settings(publish / skip := true)
   .aggregate(
     core, fs2, zio,
