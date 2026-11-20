@@ -3,8 +3,8 @@ import xsbti.HashedVirtualFileRef
 // format: off
 
 val catsVersion = "2.13.0"
-val fs2Version = "3.14.0"
-val zioVersion = "2.1.26"
+val fs2Version = "3.16.0"
+val zioVersion = "2.1.27"
 
 organization := "io.github.guymers"
 homepage := Some(uri("https://github.com/guymers/ceesvee"))
@@ -14,7 +14,7 @@ developers := List(
 )
 ThisBuild / scmInfo := Some(ScmInfo(uri("https://github.com/guymers/ceesvee"), "git@github.com:guymers/ceesvee.git"))
 
-scalaVersion := "3.3.8"
+scalaVersion := "3.3.9"
 versionScheme := Some("pvp")
 
 scalacOptions ++= Seq(
@@ -32,10 +32,9 @@ scalacOptions ++= Seq(
   "-Wvalue-discard",
 )
 
-// Maven Central requires a javadoc jar for each published module. Scala 3 scaladoc jars are
-// ~2.7 MB each because they bundle the whole documentation site (fonts, scripts, etc.), which
-// adds ~8 MB to every release. Publish an empty jar instead to stay under the monthly upload
-// limit; this also skips generating scaladoc during the release.
+// Maven Central requires a javadoc jar for each published module. Publish an empty jar instead of
+// the ~2.1 MB of scaladoc per release: this saves upload quota and IDEs take scaladoc from the
+// sources jar anyway.
 Compile / packageDoc / mappings := Seq.empty
 
 Compile / console / scalacOptions ~= filterScalacConsoleOpts
@@ -103,7 +102,7 @@ lazy val fs2 = module("fs2")
   .settings(
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core" % fs2Version,
-      "dev.zio" %% "zio-interop-cats" % "23.1.0.14" % Test,
+      "dev.zio" %% "zio-interop-cats" % "23.1.0.15" % Test,
     ),
   )
   .dependsOn(core % "compile->compile;test->test")
