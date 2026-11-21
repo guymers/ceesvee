@@ -162,7 +162,8 @@ object CsvParserVector {
           Array.emptyByteArray
         }
         val to = if (isPrevCr && !crFromPreviousChunk) sliceTo - 1 else sliceTo
-        val _ = builder += leftover ++ arraySlice(bytes, sliceStart, to, i, 0)
+        val slice = arraySlice(bytes, sliceStart, to)
+        val _ = builder += (if (leftover.isEmpty) slice else leftover ++ slice)
 
         sliceStart = sliceTo + 1
       }
@@ -173,7 +174,7 @@ object CsvParserVector {
     }
 
     val leftover = if (sliceStart == 0) {
-      state.leftover ++ bytes
+      if (state.leftover.isEmpty) bytes.clone() else state.leftover ++ bytes
     } else {
       bytes.slice(sliceStart, bytes.length)
     }
@@ -258,60 +259,14 @@ object CsvParserVector {
     (if (startsInsideQuote) ~parity else parity) | quotes
   }
 
-  private def arraySlice(src: Array[Byte], from: Int, to: Int, offset: Int, ignore: Long) = {
-    var from_ = from
-    var to_ = to
-    var ignoreCount = 0
+  private def arraySlice(src: Array[Byte], from: Int, to: Int) = {
+    val size = to - from
 
-    var ignoreBitsSet = ignore
-    while (java.lang.Long.bitCount(ignoreBitsSet) > 0) {
-      val i = java.lang.Long.numberOfTrailingZeros(ignoreBitsSet) + offset
-      ignoreBitsSet = ignoreBitsSet ^ java.lang.Long.lowestOneBit(ignoreBitsSet)
-
-      if (i < from_ || i > to_) {
-        ()
-      } else if (i == from_) {
-        from_ = from_ + 1
-      } else if (i == to_) {
-        to_ = to_ - 1
-      } else {
-        ignoreCount = ignoreCount + 1
-      }
-    }
-
-    val size = to_ - from_ + ignoreCount
-    if (size <= 0 || from_ >= to_) {
+    if (size <= 0) {
       Array.emptyByteArray
     } else {
       val dest = Array.ofDim[Byte](size)
-
-      if (ignoreCount == 0) {
-        System.arraycopy(src, from_, dest, 0, size)
-      } else {
-        var srcPosition = from_
-        var destPosition = 0
-
-        var ignoreBitsSet2 = ignore
-        while (java.lang.Long.bitCount(ignoreBitsSet2) > 0) {
-          val i = java.lang.Long.numberOfTrailingZeros(ignoreBitsSet2) + offset
-          ignoreBitsSet2 = ignoreBitsSet2 ^ java.lang.Long.lowestOneBit(ignoreBitsSet2)
-
-          if (i < from_ || i > to_) {
-            ()
-          } else if (srcPosition == i) {
-            srcPosition = i + 1
-          } else {
-            val positionSize = srcPosition - i
-            System.arraycopy(src, srcPosition, dest, destPosition, positionSize)
-            srcPosition = i + 1
-            destPosition = destPosition + positionSize
-          }
-        }
-        if (srcPosition < to_) {
-          System.arraycopy(src, srcPosition, dest, destPosition, to_ - srcPosition)
-        }
-      }
-
+      System.arraycopy(src, from, dest, 0, size)
       dest
     }
   }

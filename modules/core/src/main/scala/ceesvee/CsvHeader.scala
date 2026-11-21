@@ -30,10 +30,14 @@ object CsvHeader {
   final case class Errors(
     raw: Map[String, String],
     errors: SortedMap[String, CsvRecordDecoder.Errors.Error],
-  ) extends RuntimeException({
+  ) extends RuntimeException with NoStackTrace {
+    private lazy val message = {
       val reasons = errors.toList.map({ case (h, e) => s"column $h ${e.toString}" })
       s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.mkString(";")}"
-    }) with NoStackTrace
+    }
+
+    override def getMessage = message
+  }
 
   /**
    * A record decoder that decodes fields based on the names of the headers

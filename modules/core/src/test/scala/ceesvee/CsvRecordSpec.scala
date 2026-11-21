@@ -65,6 +65,12 @@ object CsvRecordSpec extends ZIOSpecDefault {
         ),
       )))
     },
+    test("error message truncates the raw row") {
+      val fields = Vector.fill(20)("0123456789")
+      val message = CsvRecordDecoder[Test].decode(fields).swap.toOption.map(_.getMessage)
+
+      assertTrue(message.exists(_.startsWith(s"Failed to decode ${fields.mkString(",").take(64)} because: ")))
+    },
     suite("custom error")(
       test("simple") {
         val fields = Vector("a str", "0")

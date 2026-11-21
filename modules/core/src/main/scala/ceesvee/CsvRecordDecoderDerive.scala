@@ -24,28 +24,33 @@ class CsvRecordDecoderInstance[A](
   decoders: => List[CsvRecordDecoder[?]],
 ) extends CsvRecordDecoder[A] {
   private lazy val instances = decoders
-  private lazy val length = instances.length
+  private lazy val instancesLength = instances.length
 
   override lazy val numFields = instances.foldLeft(0)(_ + _.numFields)
+
+  override def decode(fields: IndexedSeq[String]) = decodeAt(fields, 0, fields.length)
 
   @SuppressWarnings(Array(
     "org.wartremover.warts.MutableDataStructures",
     "org.wartremover.warts.Var",
   ))
-  override def decode(fields: IndexedSeq[String]) = {
+  override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
     val errs = SortedMap.newBuilder[Int, CsvRecordDecoder.Errors.Error]
-    val values = Array.ofDim[Any](length)
+    val values = Array.ofDim[Any](instancesLength)
 
     var index = 0
-    var offset = 0
+    var localOffset = 0
+    var absoluteOffset = offset
+
     instances.foreach { decoder =>
       val num = decoder.numFields
-      decoder.decode(fields.slice(offset, offset + num)) match {
-        case Left(error) => error.errors.foreachEntry { case (k, v) => errs.addOne((k + offset, v)) }
+      decoder.decodeAt(fields, absoluteOffset, num) match {
+        case Left(error) => error.errors.foreachEntry { case (k, v) => errs.addOne((k + localOffset, v)) }
         case Right(v) => values.update(index, v)
       }
       index = index + 1
-      offset = offset + num
+      localOffset = localOffset + num
+      absoluteOffset = absoluteOffset + num
     }
 
     val errs_ = errs.result()
