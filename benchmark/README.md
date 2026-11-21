@@ -4,22 +4,21 @@
 AMD Ryzen 9 9950X
 ```
 # JMH version: 1.37
-# VM version: JDK 25.0.3, OpenJDK 64-Bit Server VM, 25.0.3
-Benchmark                      Mode  Cnt    Score   Error  Units
-ParserBenchmark.ceesvee        avgt   10  214.007 ± 2.136  us/op
-ParserBenchmark.ceesveeVector  avgt   10   96.536 ± 0.203  us/op
-ParserBenchmark.scalaCsv       avgt   10  750.618 ± 1.876  us/op
-ParserBenchmark.univocity      avgt   10  196.028 ± 1.183  us/op
+# VM version: JDK 25.0.5.1, OpenJDK 64-Bit Server VM, 25.0.5.1
+ParserBenchmark.ceesvee        avgt   10  146.184 ± 0.276  us/op
+ParserBenchmark.ceesveeVector  avgt   10   99.182 ± 0.335  us/op
+ParserBenchmark.scalaCsv       avgt   10  792.948 ± 1.385  us/op
+ParserBenchmark.univocity      avgt   10  199.626 ± 0.878  us/op
 ```
 
 ```
 # JMH version: 1.37
-# VM version: JDK 25.0.3, OpenJDK 64-Bit Server VM, 25.0.3+9-jvmci-25.1-b19
+# VM version: JDK 25.0.4.1.1, OpenJDK 64-Bit Server VM, 25.0.4.1.1+1-jvmci-25.4-b23
 Benchmark                      Mode  Cnt    Score   Error  Units
-ParserBenchmark.ceesvee        avgt   10  117.435 ± 0.841  us/op
-ParserBenchmark.ceesveeVector  avgt   10  969.052 ± 3.997  us/op
-ParserBenchmark.scalaCsv       avgt   10  782.370 ± 2.014  us/op
-ParserBenchmark.univocity      avgt   10  202.184 ± 1.849  us/op
+ParserBenchmark.ceesvee        avgt   10  119.230 ± 0.505  us/op
+ParserBenchmark.ceesveeVector  avgt   10  576.901 ± 1.299  us/op
+ParserBenchmark.scalaCsv       avgt   10  736.395 ± 1.178  us/op
+ParserBenchmark.univocity      avgt   10  200.094 ± 1.090  us/op
 ```
 
 `benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.DecoderBenchmark`
@@ -27,8 +26,37 @@ ParserBenchmark.univocity      avgt   10  202.184 ± 1.849  us/op
 AMD Ryzen 9 9950X
 ```
 # JMH version: 1.37
-# VM version: JDK 25.0.3, OpenJDK 64-Bit Server VM, 25.0.3
+# VM version: JDK 25.0.5.1, OpenJDK 64-Bit Server VM, 25.0.5.1
 Benchmark                   Mode  Cnt  Score    Error  Units
-DecoderBenchmark.ceesvee    avgt   10  0.107 ±  0.001  us/op
-DecoderBenchmark.univocity  avgt   10  0.011 ±  0.001  us/op
+DecoderBenchmark.ceesvee    avgt   10  0.099 ±  0.001  us/op
+DecoderBenchmark.univocity  avgt   10  0.006 ±  0.001  us/op
+```
+
+```
+# JMH version: 1.37
+# VM version: JDK 25.0.4.1.1, OpenJDK 64-Bit Server VM, 25.0.4.1.1+1-jvmci-25.4-b23
+Benchmark                   Mode  Cnt  Score    Error  Units
+DecoderBenchmark.ceesvee    avgt   10  0.053 ±  0.001  us/op
+DecoderBenchmark.univocity  avgt   10  0.006 ±  0.001  us/op
+```
+
+`benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.WriterBenchmark`
+
+AMD Ryzen 9 9950X
+```
+# JMH version: 1.37
+# VM version: JDK 25.0.5.1, OpenJDK 64-Bit Server VM, 25.0.5.1
+Benchmark                                          Mode  Cnt    Score   Error  Units
+WriterBenchmark.ceesveeEncodeWithHeader            avgt   10  552.325 ± 2.105  us/op
+WriterBenchmark.ceesveeFieldsToLine                avgt   10  319.633 ± 1.557  us/op
+WriterBenchmark.ceesveeFieldsToLineWithoutQuoting  avgt   10  251.664 ± 2.039  us/op
+```
+
+```
+# JMH version: 1.37
+# VM version: JDK 25.0.4.1.1, OpenJDK 64-Bit Server VM, 25.0.4.1.1+1-jvmci-25.4-b23
+Benchmark                                          Mode  Cnt    Score   Error  Units
+WriterBenchmark.ceesveeEncodeWithHeader            avgt   10  509.721 ± 3.291  us/op
+WriterBenchmark.ceesveeFieldsToLine                avgt   10  277.629 ± 0.574  us/op
+WriterBenchmark.ceesveeFieldsToLineWithoutQuoting  avgt   10  195.952 ± 0.155  us/op
 ```

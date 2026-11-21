@@ -18,23 +18,7 @@ import java.util.concurrent.TimeUnit
   ),
 )
 class ParserBenchmark {
-
-  private def line(i: Int) = List("basic string", " \"quoted \nstring\" ", i.toString, "456.789", "true").mkString(",")
-
-  private val lines = (1 to 1000).map(line(_)).mkString("\n")
-  private val linesBytes = lines.getBytes(StandardCharsets.UTF_8)
-  private def linesReader = {
-    val streams = new java.util.ArrayList[ByteArrayInputStream]()
-    linesBytes.grouped(8192).foreach { bytes =>
-      streams.add(new ByteArrayInputStream(bytes))
-    }
-    val is = new SequenceInputStream(java.util.Collections.enumeration(streams))
-    new InputStreamReader(is)
-  }
-
-  private val ceesveeOptions = {
-    _root_.ceesvee.CsvParser.Options.Defaults
-  }
+  import ParserBenchmark.*
 
   @Benchmark
   def ceesvee: List[List[String]] = {
@@ -63,5 +47,24 @@ class ParserBenchmark {
     val parser = new com.univocity.parsers.csv.CsvParser(univocitySettings)
     parser.beginParsing(linesReader)
     parser.parseAll()
+  }
+}
+object ParserBenchmark {
+
+  private def line(i: Int) = List("basic string", " \"quoted \nstring\" ", i.toString, "456.789", "true").mkString(",")
+
+  private val lines = (1 to 1000).map(line(_)).mkString("\n")
+  private val linesBytes = lines.getBytes(StandardCharsets.UTF_8)
+  private def linesReader = {
+    val streams = new java.util.ArrayList[ByteArrayInputStream]()
+    linesBytes.grouped(8192).foreach { bytes =>
+      streams.add(new ByteArrayInputStream(bytes))
+    }
+    val is = new SequenceInputStream(java.util.Collections.enumeration(streams))
+    new InputStreamReader(is)
+  }
+
+  private val ceesveeOptions = {
+    _root_.ceesvee.CsvParser.Options.Defaults
   }
 }
