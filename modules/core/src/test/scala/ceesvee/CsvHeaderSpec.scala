@@ -44,6 +44,46 @@ object CsvHeaderSpec extends ZIOSpecDefault {
         )))
       } :: Nil
     }*),
+    suite("short rows")({
+      val inOrder = header.create(List("a", "b", "c")).toOption.get
+      val reordered = header.create(List("b", "a", "c")).toOption.get
+
+      test("in header order") {
+        val row = Vector("str", "1")
+        assertTrue(inOrder.decode(row) == Left(CsvHeader.Errors(
+          Map("a" -> "str", "b" -> "1"),
+          SortedMap("c" -> CsvRecordDecoder.Errors.Field.Missing),
+        )))
+      } ::
+      test("in a reordered header") {
+        val row = Vector("1", "str")
+        assertTrue(reordered.decode(row) == Left(CsvHeader.Errors(
+          Map("a" -> "str", "b" -> "1"),
+          SortedMap("c" -> CsvRecordDecoder.Errors.Field.Missing),
+        )))
+      } ::
+      test("when the missing field is not last in the header order") {
+        val decoder = header.create(List("b", "c", "a")).toOption.get
+        val row = Vector("1", "true")
+        assertTrue(decoder.decode(row) == Left(CsvHeader.Errors(
+          Map("b" -> "1", "c" -> "true"),
+          SortedMap("a" -> CsvRecordDecoder.Errors.Field.Missing),
+        )))
+      } ::
+      test("reports missing and invalid fields together") {
+        val row = Vector("nope", "str")
+        assertTrue(reordered.decode(row) == Left(CsvHeader.Errors(
+          Map("a" -> "str", "b" -> "nope"),
+          SortedMap(
+            "b" -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error(
+              "nope",
+              "invalid numeric value, required int",
+            )),
+            "c" -> CsvRecordDecoder.Errors.Field.Missing,
+          ),
+        )))
+      } :: Nil
+    }*),
     suite("from tuple")(
       test("an empty tuple is a compile error") {
         illTyped(""" CsvHeader.createFromTuple(EmptyTuple)(using CsvRecordDecoder[Test]) """)
