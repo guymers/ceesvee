@@ -9,6 +9,13 @@ object CsvParser {
 
   trait Options {
     def commentPrefix: Option[String]
+
+    /**
+     * Maximum length of a line.
+     *
+     * Counted in UTF-16 code units for string based parsers and in UTF-8 bytes
+     * for byte based parsers. For ASCII input both lengths will be the same.
+     */
     def maximumLineLength: Int
     def skipBlankRows: Boolean
     def trim: Options.Trim
@@ -281,7 +288,6 @@ object CsvParser {
     options: Options,
   )(using f: Factory[String, C[String]]): C[String] = {
     val fields = f.newBuilder
-    val escapedField = new mutable.StringBuilder
     val delimiter = options.delimiter match {
       case Options.Delimiter.Comma => ','
       case Options.Delimiter.Tab => '\t'
@@ -293,48 +299,29 @@ object CsvParser {
     while (i < line.length) {
       val char = line.charAt(i)
       if (char == delimiter && !insideQuote) {
-        val field = if (escapedField.isEmpty) {
-          line.substring(sliceStart, i)
-        } else {
-          escapedField.append(line.substring(sliceStart, i))
-          val result = escapedField.result()
-          escapedField.clear()
-          result
-        }
-        fields.addOne(trimString(options, field))
+        fields.addOne(trimStringAndUnescape(options, line.substring(sliceStart, i)))
         i += 1
         sliceStart = i
       } else if (char == '"') {
-        if (insideQuote && (i + 1) < line.length && line.charAt(i + 1) == '"') {
-          escapedField.append(line.substring(sliceStart, i))
-          sliceStart = i + 1
-          i += 2
-        } else {
-          i += 1
-          insideQuote = !insideQuote
-        }
+        insideQuote = !insideQuote
+        i += 1
       } else {
         i += 1
       }
     }
 
-    val field = if (escapedField.isEmpty) {
-      line.substring(sliceStart, i)
-    } else {
-      escapedField.append(line.substring(sliceStart, i))
-      escapedField.result()
-    }
-    fields.addOne(trimString(options, field))
+    fields.addOne(trimStringAndUnescape(options, line.substring(sliceStart, i)))
 
     fields.result()
   }
 
-  private[ceesvee] def trimString(options: Options, str: String) = {
+  private[ceesvee] def trimStringAndUnescape(options: Options, str: String) = {
     // always ignore whitespace around a quoted cell
     val trimmed = Options.Trim.True.strip(str)
 
     if (trimmed.length >= 2 && trimmed.charAt(0) == '"' && trimmed.charAt(trimmed.length - 1) == '"') {
-      trimmed.substring(1, trimmed.length - 1)
+      // only a quoted field has doubled quotes that need unescaping
+      trimmed.substring(1, trimmed.length - 1).replace("\"\"", "\"")
     } else {
       options.trim.strip(str)
     }
