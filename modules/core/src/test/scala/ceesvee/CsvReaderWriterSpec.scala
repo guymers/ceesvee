@@ -11,30 +11,28 @@ object CsvReaderWriterSpec extends ZIOSpecDefault {
   override val spec = suite("CsvReaderWriter")(
     test("to and from a record") {
       check(CsvTestHelper.gen.fields) { fields =>
-        val line = CsvWriter.fieldsToLine(fields)
-        val parsed = CsvParser.parseLine[Chunk](line, CsvParser.Options.Defaults)
-        assertTrue(parsed == fields.toChunk)
+        assertFields(fields.toChunk)
       }
     },
     test("to and from a field with unicode whitespace") {
-      val fields = List(
-        "\u000Bfield",
-        "field\u000B",
-        "\u000Cfield",
-        "field\u000C",
-        "\u001Cfield",
-        "field\u001C",
-        "\u2003field",
-        "field\u2003",
-        "\u3000field",
-        "field\u3000",
-        "\u2003 a, \"b\" \u000C",
-      )
-
-      assertTrue(fields.forall { field =>
-        val line = CsvWriter.fieldsToLine(List(field))
-        CsvParser.parseLine[List](line, CsvParser.Options.Defaults) == List(field)
-      })
+      assertField("\u000Bfield") &&
+      assertField("field\u000B") &&
+      assertField("\u000Cfield") &&
+      assertField("field\u000C") &&
+      assertField("\u001Cfield") &&
+      assertField("field\u001C") &&
+      assertField("\u2003field") &&
+      assertField("field\u2003") &&
+      assertField("\u3000field") &&
+      assertField("field\u3000") &&
+      assertField("\u2003 a, \"b\" \u000C")
     },
   )
+
+  private def assertField(field: String) = assertFields(Chunk(field))
+
+  private def assertFields(fields: Chunk[String]) = {
+    val line = CsvWriter.fieldsToLine(fields)
+    assertTrue(CsvParser.parseLine[Chunk](line, CsvParser.Options.Defaults) == fields)
+  }
 }
