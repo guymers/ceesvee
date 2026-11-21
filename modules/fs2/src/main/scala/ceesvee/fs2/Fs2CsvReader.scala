@@ -19,11 +19,15 @@ object Fs2CsvReader {
    *
    * CSV lines are reordered based on the given headers.
    *
+   * The input strings must contain new lines as they are split on them. Do not
+   * feed line oriented streams such as `fs2.text.lines` directly: lines that do
+   * not contain a new line are treated as one incomplete line.
+   *
    * Raises a [[ceesvee.CsvParser.Error.LineTooLong]] if a line is longer than
    * `maximumLineLength`.
    *
    * Raises a [[CsvHeader.MissingHeaders]] if the first line does not contain
-   * all the headers.
+   * all the headers, including when the input is empty.
    */
   def decodeWithHeader[F[_]: RaiseThrowable, T](
     header: CsvHeader[T],
@@ -38,7 +42,11 @@ object Fs2CsvReader {
       stream.pull.uncons.flatMap {
 
         case None =>
-          Pull.output(Chunk.empty)
+          if (decoder.isEmpty) {
+            Pull.raiseError[F](CsvHeader.MissingHeaders(header.headers))
+          } else {
+            Pull.output(Chunk.empty)
+          }
 
         case Some((chunk, stream)) =>
           decoder.map(d => Right((chunk, d))).orElse {
@@ -64,6 +72,9 @@ object Fs2CsvReader {
 
   /**
    * Turns a stream of strings into a stream of decoded CSV records.
+   *
+   * The input strings must contain new lines as they are split on them. Do not
+   * feed line oriented streams such as `fs2.text.lines` directly.
    *
    * Raises a [[ceesvee.CsvParser.Error.LineTooLong]] if a line is longer than
    * `maximumLineLength`.

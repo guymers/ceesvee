@@ -45,7 +45,12 @@ class CsvRecordDecoderInstance[A](
     instances.foreach { decoder =>
       val num = decoder.numFields
       decoder.decodeAt(fields, absoluteOffset, num) match {
-        case Left(error) => error.errors.foreachEntry { case (k, v) => errs.addOne((k + localOffset, v)) }
+        case Left(error) =>
+          error.errors.foreachEntry { case (k, v) =>
+            // record level errors are not tied to a field so must not be offset
+            val index = if (k == CsvRecordDecoder.Errors.RecordIndex) k else k + localOffset
+            errs.addOne((index, v))
+          }
         case Right(v) => values.update(index, v)
       }
       index = index + 1

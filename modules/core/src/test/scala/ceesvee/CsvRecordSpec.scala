@@ -78,7 +78,7 @@ object CsvRecordSpec extends ZIOSpecDefault {
         assertTrue(result == Left(CsvRecordDecoder.Errors(
           raw = fields,
           errors = SortedMap(
-            0 -> CsvRecordDecoder.Errors.Record("int cannot be 0"),
+            CsvRecordDecoder.Errors.RecordIndex -> CsvRecordDecoder.Errors.Record("int cannot be 0"),
           ),
         )))
       },
@@ -88,9 +88,15 @@ object CsvRecordSpec extends ZIOSpecDefault {
         assertTrue(result == Left(CsvRecordDecoder.Errors(
           raw = fields,
           errors = SortedMap(
-            1 -> CsvRecordDecoder.Errors.Record("int cannot be 0"),
+            CsvRecordDecoder.Errors.RecordIndex -> CsvRecordDecoder.Errors.Record("int cannot be 0"),
           ),
         )))
+      },
+      test("message") {
+        val fields = Vector("a str", "0")
+        val message = CsvRecordDecoder[TestCustomError].decode(fields).swap.toOption.map(_.getMessage)
+
+        assertTrue(message.exists(_.endsWith("because: record int cannot be 0")))
       },
     ),
     suite("nested optional object")(

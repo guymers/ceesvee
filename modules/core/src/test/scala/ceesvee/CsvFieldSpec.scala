@@ -119,10 +119,54 @@ object CsvFieldSpec extends ZIOSpecDefault {
           }
         },
         test("invalid") {
-          val result = CsvFieldDecoder[Double].decode("_123.45")
-          assertTrue(result == Left(Error("_123.45", "invalid numeric value, required double")))
+          val result = CsvFieldDecoder[BigDecimal].decode("_123.45")
+          assertTrue(result == Left(Error("_123.45", "invalid numeric value")))
         },
       ),
+      suite("big int")(
+        test("valid") {
+          check(Gen.long.map(BigInt(_))) { i =>
+            assertGolden(i)
+          }
+        },
+        test("invalid") {
+          val result = CsvFieldDecoder[BigInt].decode("_123")
+          assertTrue(result == Left(Error("_123", "invalid numeric value")))
+        },
+      ),
+      suite("short")(
+        test("valid") {
+          check(Gen.short) { s =>
+            assertGolden(s)
+          }
+        },
+        test("invalid") {
+          val result = CsvFieldDecoder[Short].decode("32768")
+          assertTrue(result == Left(Error("32768", "invalid numeric value")))
+        },
+      ),
+      suite("byte")(
+        test("valid") {
+          check(Gen.byte) { b =>
+            assertGolden(b)
+          }
+        },
+        test("invalid") {
+          val result = CsvFieldDecoder[Byte].decode("128")
+          assertTrue(result == Left(Error("128", "invalid numeric value")))
+        },
+      ),
+    ),
+    suite("char")(
+      test("valid") {
+        check(Gen.asciiChar) { c =>
+          assertGolden(c)
+        }
+      },
+      test("invalid") {
+        val result = CsvFieldDecoder[Char].decode("ab")
+        assertTrue(result == Left(Error("ab", "invalid character value, expected a single character")))
+      },
     ),
     suite("times")(
       suite("date")(

@@ -27,6 +27,15 @@ object CsvReaderWriterSpec extends ZIOSpecDefault {
       assertField("field\u3000") &&
       assertField("\u2003 a, \"b\" \u000C")
     },
+    test("to and from a record with the tab delimiter") {
+      check(CsvTestHelper.gen.fields) { fields =>
+        val chunk = fields.toChunk
+        val options = CsvParser.Options.Defaults.copy(delimiter = CsvParser.Options.Delimiter.Tab)
+        val line = CsvWriter.fieldsToLine(chunk, CsvWriter.Options.from(options))
+
+        assertTrue(CsvParser.parseLine[Chunk](line, options) == chunk)
+      }
+    },
   )
 
   private def assertField(field: String) = assertFields(Chunk(field))

@@ -23,7 +23,14 @@ trait CsvRecordDecoder[A] { self =>
 
   final def map[B](f: A => B): CsvRecordDecoder[B] = emap(a => Right(f(a)))
 
-  final def emap[B](f: A => Either[String, B]): CsvRecordDecoder[B] = emapAtIndex(a => f(a).left.map((0, _)))
+  /**
+   * Map the decoded value, reporting a failure against the whole record rather
+   * than against a single field.
+   *
+   * Record level errors are stored at [[CsvRecordDecoder.Errors.RecordIndex]].
+   */
+  final def emap[B](f: A => Either[String, B]): CsvRecordDecoder[B] =
+    emapAtIndex(a => f(a).left.map((CsvRecordDecoder.Errors.RecordIndex, _)))
 
   final def emapAtIndex[B](f: A => Either[(Int, String), B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
     override val numFields = self.numFields
@@ -69,13 +76,24 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
     errors: SortedMap[Int, Errors.Error],
   ) extends RuntimeException with NoStackTrace {
     private lazy val message = {
-      val reasons = errors.toList.map({ case (i, e) => s"index ${i.toString} ${e.toString}" })
+      val reasons = errors.toList.map({ case (i, e) =>
+        if (i == Errors.RecordIndex) s"record ${e.toString}"
+        else s"index ${i.toString} ${e.toString}"
+      })
       s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.mkString(";")}"
     }
 
     override def getMessage = message
   }
   object Errors {
+
+    /**
+     * The index used for an error that applies to the whole record rather than
+     * to a single field.
+     *
+     * Record level errors are reported by [[CsvRecordDecoder.emap]].
+     */
+    val RecordIndex: Int = -1
 
     sealed trait Error {
       override val toString: String = this match {

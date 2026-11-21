@@ -17,7 +17,10 @@ object ZioCsvParserVector {
   import CsvParserVector.splitBytes
 
   /**
-   * Turns a stream of strings into a stream of CSV records.
+   * Turns a stream of bytes into a stream of CSV records.
+   *
+   * The bytes are interpreted as UTF-8 and may be split across chunks at any
+   * point.
    */
   def parse(
     options: CsvParser.Options,

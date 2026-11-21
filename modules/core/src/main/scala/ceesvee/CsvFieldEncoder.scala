@@ -39,6 +39,10 @@ object CsvFieldEncoder {
   given float: CsvFieldEncoder[Float] = fromToString
   given double: CsvFieldEncoder[Double] = fromToString
   given bigDecimal: CsvFieldEncoder[BigDecimal] = fromToString
+  given bigInt: CsvFieldEncoder[BigInt] = fromToString
+  given short: CsvFieldEncoder[Short] = fromToString
+  given byte: CsvFieldEncoder[Byte] = fromToString
+  given char: CsvFieldEncoder[Char] = fromToString
 
   given localDate: CsvFieldEncoder[LocalDate] = fromToString
   given localDateTime: CsvFieldEncoder[LocalDateTime] = fromToString

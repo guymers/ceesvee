@@ -7,6 +7,7 @@ import zio.stream.ZStream
 
 import java.io.FileNotFoundException
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import scala.util.Using
@@ -27,32 +28,46 @@ object RealWorldFileHelper {
     }
   }
 
-  private val UTF8BOM = List(0xef, 0xbb, 0xbf).map(_.toByte)
+  private val UTF8BOM = '\uFEFF'
 
+  // Reads characters via a decoder so that a multi-byte character split across
+  // the underlying byte chunks is not corrupted.
   private def strings(is: InputStream, cs: Charset) = new Iterator[String] {
+    private val reader = new InputStreamReader(is, cs)
+    private val buffer = Array.ofDim[Char](16384)
     private var initial = true
     private var read = 0
-    private val buffer = Array.ofDim[Byte](16384)
+    private var end = false
+
+    private def fill(): Unit = {
+      while (read == 0 && !end) {
+        read = reader.read(buffer)
+
+        if (read < 0) {
+          read = 0
+          end = true
+        }
+      }
+    }
 
     override def hasNext = {
-      if (read == 0) {
-        read = is.read(buffer)
-      }
-      read >= 0
+      fill()
+      read > 0
     }
 
     override def next() = {
-      if (read < 0) {
+      fill()
+
+      if (read == 0) {
         throw new NoSuchElementException
       } else {
-        val _bytes = buffer.take(read)
+        val str = new String(buffer, 0, read)
         read = 0
 
-        val bytes = if (initial) {
+        if (initial) {
           initial = false
-          if (_bytes.take(3).toList == UTF8BOM) _bytes.drop(3) else _bytes
-        } else _bytes
-        new String(bytes, cs)
+          if (str.nonEmpty && str.charAt(0) == UTF8BOM) str.drop(1) else str
+        } else str
       }
     }
   }

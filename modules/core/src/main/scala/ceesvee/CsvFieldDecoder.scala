@@ -3,7 +3,6 @@ package ceesvee
 import java.net.URI
 import java.time.*
 import java.time.format.DateTimeParseException
-import java.time.zone.ZoneRulesException
 import java.util.UUID
 import scala.util.control.NoStackTrace
 
@@ -34,6 +33,11 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
   def instance[A](f: String => Either[Error, A]): CsvFieldDecoder[A] = f(_)
 
   given string: CsvFieldDecoder[String] = instance(Right(_))
+
+  given char: CsvFieldDecoder[Char] = instance { str =>
+    if (str.length == 1) Right(str.charAt(0))
+    else Left(Error(str, "invalid character value, expected a single character"))
+  }
 
   // "true", "t", "yes", "y" are true
   // "false", "f", "no", "n" are false
@@ -109,7 +113,6 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
     try {
       Right(ZoneId.of(str))
     } catch {
-      case e: ZoneRulesException => Left(Error(str, e.getMessage))
       case e: DateTimeException => Left(Error(str, e.getMessage))
     }
   }

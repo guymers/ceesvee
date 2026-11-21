@@ -12,9 +12,15 @@ object ZioCsvReaderVector {
   import ZioCsvReader.Error
 
   /**
-   * Turns a stream of strings into a stream of decoded CSV records.
+   * Turns a stream of bytes into a stream of decoded CSV records.
    *
    * CSV lines are reordered based on the given headers.
+   *
+   * The bytes are interpreted as UTF-8. A UTF-8 BOM is not stripped: drop the
+   * leading bytes before calling this method.
+   *
+   * Fails with [[Error.MissingHeaders]] if the first line does not contain all
+   * the headers, including when the input is empty.
    */
   def decodeWithHeader[R, E, T](
     stream: ZStream[R, E, Byte],
@@ -26,7 +32,9 @@ object ZioCsvReaderVector {
   }
 
   /**
-   * Turns a stream of strings into a stream of decoded CSV records.
+   * Turns a stream of bytes into a stream of decoded CSV records.
+   *
+   * The bytes are interpreted as UTF-8.
    */
   def decode[T](
     options: CsvReader.Options,

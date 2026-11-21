@@ -20,6 +20,13 @@ object Fs2CsvParser {
   /**
    * Turns a stream of strings into a stream of CSV records.
    *
+   * The input strings must contain new lines as they are split on them. Chunks
+   * are concatenated, so line oriented streams such as `fs2.text.lines`,
+   * `Files.lines` or `Source.getLines` must not be used directly: their chunks
+   * do not contain a new line and every line is joined into a single record.
+   * Use a stream that preserves the new line characters, for example
+   * `fs2.io.file.Files.readUtf8`.
+   *
    * Raises a [[CsvParser.Error.LineTooLong]] if a line is longer than
    * `maximumLineLength`.
    */
@@ -42,6 +49,10 @@ object Fs2CsvParser {
    * Split strings into CSV lines using both '\n' and '\r\n' as delimiters.
    *
    * Delimiters within double-quotes are ignored.
+   *
+   * Each input chunk is expected to contain the new lines that terminate its
+   * lines: a chunk without a new line is carried over and joined with the next
+   * one.
    *
    * Raises a [[CsvParser.Error.LineTooLong]] if a line is longer than
    * `maximumLineLength`.

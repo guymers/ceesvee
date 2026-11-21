@@ -9,8 +9,14 @@ final class CsvHeader[T] private (
   private[ceesvee] val D: CsvRecordDecoder[T],
 ) {
 
+  /**
+   * Create a decoder that maps the given header columns to the expected
+   * headers.
+   *
+   * If a column name occurs more than once the first occurrence is used.
+   */
   def create(headerFields: Iterable[String]): Either[CsvHeader.MissingHeaders, CsvHeader.Decoder[T]] = {
-    val headerFieldsWithIndex = headerFields.zipWithIndex.toMap
+    val headerFieldsWithIndex = headerFields.iterator.zipWithIndex.distinctBy(_._1).toMap
     val (missing, ordering) = headers.partitionMap { header =>
       headerFieldsWithIndex.get(header).toRight(header)
     }
@@ -32,11 +38,22 @@ object CsvHeader {
     errors: SortedMap[String, CsvRecordDecoder.Errors.Error],
   ) extends RuntimeException with NoStackTrace {
     private lazy val message = {
-      val reasons = errors.toList.map({ case (h, e) => s"column $h ${e.toString}" })
+      val reasons = errors.toList.map {
+        case (h, e) if h == Errors.RecordKey => s"record ${e.toString}"
+        case (h, e) => s"column $h ${e.toString}"
+      }
       s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.mkString(";")}"
     }
 
     override def getMessage = message
+  }
+  object Errors {
+
+    /**
+     * The raw key used for an error that applies to the whole record rather
+     * than to a single column.
+     */
+    val RecordKey: String = "<record>"
   }
 
   /**
@@ -44,7 +61,8 @@ object CsvHeader {
    * provided.
    *
    * The number of headers must equal the number of fields `D` decodes, which is
-   * checked at runtime.
+   * checked at runtime. Header names must be unique, which is also checked at
+   * runtime.
    */
   def create[T](headers: ::[String])(using D: CsvRecordDecoder[T]): CsvHeader[T] = {
     createUnsafe(headers, D)
@@ -55,7 +73,8 @@ object CsvHeader {
    * provided.
    *
    * The number of headers must equal the number of fields `D` decodes, which is
-   * checked at runtime.
+   * checked at runtime. Header names must be unique, which is also checked at
+   * runtime.
    */
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
   def createFromTuple[T, H <: Tuple](headers: H)(using
@@ -71,6 +90,10 @@ object CsvHeader {
 
   private[ceesvee] def createUnsafe[T](headers: ::[String], D: CsvRecordDecoder[T]): CsvHeader[T] = {
     require(headers.sizeIs == D.numFields)
+
+    val duplicates = headers.diff(headers.distinct).distinct
+    require(duplicates.isEmpty, s"Duplicate headers: ${duplicates.mkString(", ")}")
+
     new CsvHeader[T](headers, D)
   }
 
@@ -105,7 +128,12 @@ object CsvHeader {
 
       def convertError(error: CsvRecordDecoder.Errors, fields: Map[String, String]) = {
         val errors = error.errors.map { case (i, error) =>
-          orderingToHeader.getOrElse(i, s"<${i.toString}>") -> error
+          val header = if (i == CsvRecordDecoder.Errors.RecordIndex) {
+            Errors.RecordKey
+          } else {
+            orderingToHeader.getOrElse(i, s"<${i.toString}>")
+          }
+          header -> error
         }
         Errors(fields, errors)
       }
