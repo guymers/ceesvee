@@ -4,9 +4,7 @@ import java.net.URI
 import java.time.*
 import java.time.format.DateTimeParseException
 import java.time.zone.ZoneRulesException
-import java.util.Locale
 import java.util.UUID
-import scala.collection.immutable.SortedSet
 import scala.util.control.NoStackTrace
 
 trait CsvFieldDecoder[A] { self =>
@@ -41,16 +39,24 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
   // "false", "f", "no", "n" are false
   // anything else is an error
   given boolean: CsvFieldDecoder[Boolean] = {
-    val trues = SortedSet("true", "t", "yes", "y")
-    val falses = SortedSet("false", "f", "no", "n")
-
-    val truesStr = trues.map(s => s"'$s'").mkString(",")
-    val falsesStr = falses.map(s => s"'$s'").mkString(",")
+    val truesStr = "'t','true','y','yes'"
+    val falsesStr = "'f','false','n','no'"
 
     instance { str =>
-      val lower = str.toLowerCase(Locale.ROOT)
-      if (trues.contains(lower)) Right(true)
-      else if (falses.contains(lower)) Right(false)
+      val isTrue =
+        str.equalsIgnoreCase("true") ||
+        str.equalsIgnoreCase("t") ||
+        str.equalsIgnoreCase("yes") ||
+        str.equalsIgnoreCase("y")
+
+      def isFalse =
+        str.equalsIgnoreCase("false") ||
+        str.equalsIgnoreCase("f") ||
+        str.equalsIgnoreCase("no") ||
+        str.equalsIgnoreCase("n")
+
+      if (isTrue) Right(true)
+      else if (isFalse) Right(false)
       else Left(Error(str, s"invalid boolean value valid values are $truesStr and $falsesStr"))
     }
   }

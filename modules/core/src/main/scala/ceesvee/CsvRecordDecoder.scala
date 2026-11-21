@@ -9,35 +9,54 @@ trait CsvRecordDecoder[A] { self =>
   def numFields: Int
   def decode(fields: IndexedSeq[String]): Either[CsvRecordDecoder.Errors, A]
 
+  /**
+   * Decode `length` fields starting at `offset`.
+   *
+   * The default implementation copies the slice. Implementations that would
+   * otherwise copy on every field should override this.
+   */
+  private[ceesvee] def decodeAt(
+    fields: IndexedSeq[String],
+    offset: Int,
+    length: Int,
+  ): Either[CsvRecordDecoder.Errors, A] = decode(fields.slice(offset, offset + length))
+
   final def map[B](f: A => B): CsvRecordDecoder[B] = emap(a => Right(f(a)))
 
   final def emap[B](f: A => Either[String, B]): CsvRecordDecoder[B] = emapAtIndex(a => f(a).left.map((0, _)))
 
   final def emapAtIndex[B](f: A => Either[(Int, String), B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
     override val numFields = self.numFields
+
     override def decode(fields: IndexedSeq[String]) = {
-      self.decode(fields).flatMap { a =>
-        f(a).left.map { case (i, msg) =>
-          val errors = SortedMap(i -> CsvRecordDecoder.Errors.Record(msg))
-          CsvRecordDecoder.Errors(fields, errors)
-        }
-      }
+      self.decode(fields).flatMap(mapDecoded(_, fields))
+    }
+
+    override def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
+      self.decodeAt(fields, offset, length).flatMap(mapDecoded(_, fields))
+    }
+
+    private def mapDecoded(a: A, fields: IndexedSeq[String]) = f(a).left.map { case (i, msg) =>
+      val errors = SortedMap(i -> CsvRecordDecoder.Errors.Record(msg))
+      CsvRecordDecoder.Errors(fields, errors)
     }
   }
 
   final def ap[B](ff: CsvRecordDecoder[A => B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
     override val numFields = ff.numFields + self.numFields
-    override def decode(fields: IndexedSeq[String]) = for {
-      aToB <- ff.decode(fields.take(ff.numFields))
-      a <- self.decode(fields.drop(ff.numFields))
+    override def decode(fields: IndexedSeq[String]) = decodeAt(fields, 0, fields.length)
+    override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = for {
+      aToB <- ff.decodeAt(fields, offset, ff.numFields)
+      a <- self.decodeAt(fields, offset + ff.numFields, self.numFields)
     } yield aToB(a)
   }
 
   final def map2[B, Z](fb: CsvRecordDecoder[B])(f: (A, B) => Z): CsvRecordDecoder[Z] = new CsvRecordDecoder[Z] {
     override val numFields = self.numFields + fb.numFields
-    override def decode(fields: IndexedSeq[String]) = for {
-      a <- self.decode(fields.take(self.numFields))
-      b <- fb.decode(fields.drop(self.numFields))
+    override def decode(fields: IndexedSeq[String]) = decodeAt(fields, 0, fields.length)
+    override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = for {
+      a <- self.decodeAt(fields, offset, self.numFields)
+      b <- fb.decodeAt(fields, offset + self.numFields, fb.numFields)
     } yield f(a, b)
   }
 
@@ -48,10 +67,14 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
   final case class Errors(
     raw: Iterable[String],
     errors: SortedMap[Int, Errors.Error],
-  ) extends RuntimeException({
+  ) extends RuntimeException with NoStackTrace {
+    private lazy val message = {
       val reasons = errors.toList.map({ case (i, e) => s"index ${i.toString} ${e.toString}" })
       s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.mkString(";")}"
-    }) with NoStackTrace
+    }
+
+    override def getMessage = message
+  }
   object Errors {
 
     sealed trait Error {
@@ -82,11 +105,14 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
   private[ceesvee] def createField[T](using D: => CsvFieldDecoder[T]): CsvRecordDecoder[T] = {
     new CsvRecordDecoder[T] {
       override val numFields = 1
-      @SuppressWarnings(Array("org.wartremover.warts.IterableOps"))
-      override def decode(fields: IndexedSeq[String]) = {
-        if (fields.isEmpty) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing)))
+
+      override def decode(fields: IndexedSeq[String]) = decodeAt(fields, 0, fields.length)
+
+      @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
+      override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
+        if (offset >= fields.length) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing)))
         else {
-          D.decode(fields.head).left.map { err =>
+          D.decode(fields(offset)).left.map { err =>
             Errors(fields, SortedMap(0 -> Errors.Field.Invalid(err)))
           }
         }
@@ -97,12 +123,15 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
   private[ceesvee] def createFieldOptional[T](using D: => CsvFieldDecoder[T]): CsvRecordDecoder[Option[T]] = {
     new CsvRecordDecoder[Option[T]] {
       override val numFields = 1
-      @SuppressWarnings(Array("org.wartremover.warts.IterableOps"))
-      override def decode(fields: IndexedSeq[String]) = {
-        if (fields.isEmpty) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing)))
-        else if (isNone(fields.head)) Right(None)
+
+      override def decode(fields: IndexedSeq[String]) = decodeAt(fields, 0, fields.length)
+
+      @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
+      override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
+        if (offset >= fields.length) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing)))
+        else if (isNone(fields(offset))) Right(None)
         else {
-          D.decode(fields.head).map(Some(_)).left.map { err =>
+          D.decode(fields(offset)).map(Some(_)).left.map { err =>
             Errors(fields, SortedMap(0 -> Errors.Field.Invalid(err)))
           }
         }
@@ -144,10 +173,21 @@ sealed trait CsvRecordDecoder3 extends CsvRecordDecoder4 { self: CsvRecordDecode
   given optional[T](using D: CsvRecordDecoder[T], ev: T <:!< Option[?]): CsvRecordDecoder[Option[T]] = {
     new CsvRecordDecoder[Option[T]] {
       override val numFields = D.numFields
-      @SuppressWarnings(Array("org.wartremover.warts.Null"))
+      @SuppressWarnings(Array(
+        "org.wartremover.warts.SeqApply",
+        "org.wartremover.warts.Var",
+        "org.wartremover.warts.While",
+      ))
       override def decode(fields: IndexedSeq[String]) = {
-        val allNone = (1 to numFields).zipAll(fields, -1, null).forall { case (_, field) =>
-          field != null && CsvRecordDecoder.isNone(field)
+        var i = 0
+        var allNone = fields.lengthIs >= numFields
+
+        while (i < fields.length && allNone) {
+          if (CsvRecordDecoder.isNone(fields(i))) {
+            i += 1
+          } else {
+            allNone = false
+          }
         }
 
         if (allNone) Right(None) else D.decode(fields).map(Some(_))
