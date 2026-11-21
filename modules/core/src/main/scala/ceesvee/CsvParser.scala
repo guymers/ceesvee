@@ -299,7 +299,7 @@ object CsvParser {
     while (i < line.length) {
       val char = line.charAt(i)
       if (char == delimiter && !insideQuote) {
-        fields.addOne(trimString(options, line.substring(sliceStart, i)))
+        fields.addOne(trimStringAndUnescape(options, line.substring(sliceStart, i)))
         i += 1
         sliceStart = i
       } else if (char == '"') {
@@ -310,16 +310,12 @@ object CsvParser {
       }
     }
 
-    fields.addOne(trimString(options, line.substring(sliceStart, i)))
+    fields.addOne(trimStringAndUnescape(options, line.substring(sliceStart, i)))
 
     fields.result()
   }
 
-  /**
-   * Turn a raw field into its value, trimming whitespace and unescaping doubled
-   * quotes in a quoted field.
-   */
-  private[ceesvee] def trimString(options: Options, str: String) = {
+  private[ceesvee] def trimStringAndUnescape(options: Options, str: String) = {
     // always ignore whitespace around a quoted cell
     val trimmed = Options.Trim.True.strip(str)
 

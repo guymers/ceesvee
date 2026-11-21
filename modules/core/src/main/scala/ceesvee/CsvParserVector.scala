@@ -244,7 +244,7 @@ object CsvParserVector {
   }
 
   private def handleField(bytes: Array[Byte], from: Int, until: Int, options: Options) = {
-    CsvParser.trimString(options, new String(bytes, from, until - from, Utf8))
+    CsvParser.trimStringAndUnescape(options, new String(bytes, from, until - from, Utf8))
   }
 
   private def setAllBitsBetweenQuotes(quotes: Long, startsInsideQuote: Boolean) = {
