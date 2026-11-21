@@ -41,38 +41,22 @@ object CsvReader {
    * Turns a stream of strings into a stream of decoded CSV records.
    *
    * CSV lines are reordered based on the given headers.
+   *
+   * The first record is consumed as the header, so it is read when this method
+   * is called.
    */
   @throws[CsvParser.Error.LineTooLong]("if a line is longer than `maximumLineLength`")
-  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   def decodeWithHeader[T](
     in: Iterator[String],
     header: CsvHeader[T],
     options: Options,
   ): Either[CsvHeader.MissingHeaders, Iterator[Either[CsvHeader.Errors, T]]] = {
+    val records = parse[IndexedSeq](in, options)
 
-    @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
-    object decode extends (IndexedSeq[String] => Iterator[Either[CsvHeader.Errors, T]]) {
-      private var decoder: CsvHeader.Decoder[T] = null
-
-      override def apply(fields: IndexedSeq[String]) = {
-        if (decoder == null) {
-          header.create(fields) match {
-            case Left(err: CsvHeader.MissingHeaders) => throw err
-            case Right(_decoder) =>
-              decoder = _decoder
-              Iterator.empty
-          }
-        } else {
-          Iterator(decoder.decode(fields))
-        }
-      }
-    }
-
-    try {
-      val iterator = parse[IndexedSeq](in, options).flatMap(decode)
-      Right(iterator)
-    } catch {
-      case e: CsvHeader.MissingHeaders => Left(e)
+    if (!records.hasNext) {
+      Left(CsvHeader.MissingHeaders(header.headers))
+    } else {
+      header.create(records.next()).map(decoder => records.map(decoder.decode))
     }
   }
 
