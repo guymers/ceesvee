@@ -30,6 +30,25 @@ object CsvParserSpec extends ZIOSpecDefault
       val it = CsvParser.parse[List](List.empty[String].iterator, CsvParser.Options.Defaults)
       assertTrue(!it.hasNext)
     },
+    test("empty chunks are ignored") {
+      val it = CsvParser.parse[List](Iterator("", "", "a,b\n", "", ""), CsvParser.Options.Defaults)
+      assertTrue(it.toList == List(List("a", "b")))
+    },
+    test("only empty chunks") {
+      val it = CsvParser.parse[List](Iterator("", ""), CsvParser.Options.Defaults)
+      assertTrue(!it.hasNext) &&
+      assertTrue(it.toList == Nil)
+    },
+    test("empty chunks after a complete line") {
+      val it = CsvParser.parse[List](Iterator("a,b\n", ""), CsvParser.Options.Defaults)
+      assertTrue(it.hasNext) &&
+      assertTrue(it.next() == List("a", "b")) &&
+      assertTrue(!it.hasNext)
+    },
+    test("empty chunks after an unterminated line") {
+      val it = CsvParser.parse[List](Iterator("a,b", "", ""), CsvParser.Options.Defaults)
+      assertTrue(it.toList == List(List("a", "b")))
+    },
     test("next throws NoSuchElementException when exhausted") {
       val it = CsvParser.parse[List](List("a,b").iterator, CsvParser.Options.Defaults)
       val _ = it.next()

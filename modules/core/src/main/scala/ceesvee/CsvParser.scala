@@ -118,10 +118,12 @@ object CsvParser {
     "org.wartremover.warts.Var",
   ))
   private final class SplitLinesIterator(in: Iterator[String], options: Options) extends Iterator[String] {
+    // empty strings cannot produce a line, filtering them here keeps hasNext consistent
+    private val chunks = in.filter(_.nonEmpty)
     private val toOutput = mutable.Queue.empty[String]
     private var state = State.initial
 
-    override def hasNext = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
+    override def hasNext = toOutput.nonEmpty || chunks.hasNext || state.leftover.nonEmpty
 
     @tailrec override def next() = {
       if (toOutput.nonEmpty) {
@@ -132,7 +134,7 @@ object CsvParser {
           throw Error.LineTooLong(options.maximumLineLength)
         }
 
-        if (!in.hasNext) {
+        if (!chunks.hasNext) {
           if (leftover.nonEmpty) {
             state = State.initial
             leftover
@@ -140,7 +142,7 @@ object CsvParser {
             throw new NoSuchElementException("next on empty iterator")
           }
         } else {
-          val str = in.next()
+          val str = chunks.next()
           val (newState, lines) = splitStrings(List(str), state)
           lines.foreach { line =>
             if (line.length > options.maximumLineLength) {

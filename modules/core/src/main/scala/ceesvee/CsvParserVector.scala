@@ -44,10 +44,12 @@ object CsvParserVector {
   @throws[Error.LineTooLong]("if a line is longer than `maximumLineLength`")
   private def splitLines(in: Iterator[Array[Byte]], options: Options): Iterator[Array[Byte]] = new SplitLinesVectorIterator(in, options)
   private final class SplitLinesVectorIterator(in: Iterator[Array[Byte]], options: Options) extends Iterator[Array[Byte]] {
+    // empty chunk has no line and would otherwise be returned as one at EOF
+    private val chunks = in.filter(_.nonEmpty)
     private val toOutput = mutable.Queue.empty[Array[Byte]]
     private var state = State.initial
 
-    override def hasNext = toOutput.nonEmpty || in.hasNext || state.leftover.nonEmpty
+    override def hasNext = toOutput.nonEmpty || chunks.hasNext || state.leftover.nonEmpty
 
     @tailrec override def next() = {
       if (toOutput.nonEmpty) {
@@ -58,11 +60,15 @@ object CsvParserVector {
           throw Error.LineTooLong(options.maximumLineLength)
         }
 
-        if (!in.hasNext) {
-          state = State.initial
-          leftover
+        if (!chunks.hasNext) {
+          if (leftover.nonEmpty) {
+            state = State.initial
+            leftover
+          } else {
+            throw new NoSuchElementException("next on empty iterator")
+          }
         } else {
-          val bytes = in.next()
+          val bytes = chunks.next()
           val (newState, lines) = splitBytes(bytes, state)
           lines.foreach { line =>
             if (line.length > options.maximumLineLength) {

@@ -3,6 +3,7 @@ package ceesvee
 import zio.Chunk
 import zio.ZIO
 import zio.test.ZIOSpecDefault
+import zio.test.assertTrue
 
 import java.nio.charset.StandardCharsets
 
@@ -13,10 +14,46 @@ object CsvParserVectorSpec extends ZIOSpecDefault
 
   private val charset = StandardCharsets.UTF_8
 
+  private val parserIteratorSuite = suite("parse Iterator contract")(
+    test("empty chunks are ignored") {
+      val input = Iterator(Array.emptyByteArray, "a,b\n".getBytes(charset), Array.emptyByteArray)
+      val it = CsvParserVector.parse[List](input, CsvParser.Options.Defaults)
+
+      assertTrue(it.toList == List(List("a", "b")))
+    },
+    test("only empty chunks") {
+      val it = CsvParserVector.parse[List](Iterator(Array.emptyByteArray), CsvParser.Options.Defaults)
+
+      assertTrue(!it.hasNext) &&
+      assertTrue(it.toList == Nil)
+    },
+    test("empty chunks after a complete line") {
+      val it = CsvParserVector.parse[List](Iterator("a,b\n".getBytes(charset), Array.emptyByteArray), CsvParser.Options.Defaults)
+
+      assertTrue(it.hasNext) &&
+      assertTrue(it.next() == List("a", "b")) &&
+      assertTrue(!it.hasNext)
+    },
+    test("empty chunks after an unterminated line") {
+      val it = CsvParserVector.parse[List](Iterator("a,b".getBytes(charset), Array.emptyByteArray), CsvParser.Options.Defaults)
+
+      assertTrue(it.toList == List(List("a", "b")))
+    },
+    test("next throws NoSuchElementException when exhausted") {
+      val it = CsvParserVector.parse[List](Iterator("a,b\n".getBytes(charset)), CsvParser.Options.Defaults)
+      val _ = it.next()
+
+      ZIO.attempt(it.next()).either.map { result =>
+        assertTrue(result.swap.exists(_.isInstanceOf[NoSuchElementException]))
+      }
+    },
+  )
+
   override val spec = suite("CsvParserVector")(
     parserSuite,
     splitStringsSuite,
     parseLineSuite,
+    parserIteratorSuite,
   )
 
   override protected def parse(lines: Iterable[String], options: CsvParser.Options) = {
