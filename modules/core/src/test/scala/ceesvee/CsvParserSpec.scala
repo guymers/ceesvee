@@ -496,6 +496,15 @@ trait CsvParserLineSuite { self: ZIOSpecDefault =>
         test("lone quote is preserved") {
           assertTrue(parseLine("\"", Options.Defaults) == List("\""))
         },
+        test("doubled quotes before trailing content are preserved") {
+          assertTrue(parseLine("""a,"a""b"x""", Options.Defaults) == List("a", "\"a\"\"b\"x"))
+        },
+        test("unterminated doubled quote is preserved") {
+          assertTrue(parseLine("""a,"a""b""", Options.Defaults) == List("a", "\"a\"\"b"))
+        },
+        test("three quotes is a quoted quote") {
+          assertTrue(parseLine("a,\"\"\"", Options.Defaults) == List("a", "\""))
+        },
       ),
       suite("escape character")(
         test("double quote") {

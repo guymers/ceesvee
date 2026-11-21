@@ -244,14 +244,7 @@ object CsvParserVector {
   }
 
   private def handleField(bytes: Array[Byte], from: Int, until: Int, options: Options) = {
-    val str = new String(bytes, from, until - from, Utf8)
-    val trimmed = Options.Trim.True.strip(str)
-
-    if (trimmed.length >= 2 && trimmed.charAt(0) == '"' && trimmed.charAt(trimmed.length - 1) == '"') {
-      trimmed.substring(1, trimmed.length - 1).replace("\"\"", "\"")
-    } else {
-      options.trim.strip(str)
-    }
+    CsvParser.trimString(options, new String(bytes, from, until - from, Utf8))
   }
 
   private def setAllBitsBetweenQuotes(quotes: Long, startsInsideQuote: Boolean) = {
