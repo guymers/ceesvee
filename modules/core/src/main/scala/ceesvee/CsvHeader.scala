@@ -113,6 +113,9 @@ object CsvHeader {
             .left.map(convertError(_, withHeaders(fields)))
         }
       } else {
+        // number of row fields needed to cover every expected header
+        val requiredFieldsCount = ordering.maxOption.getOrElse(0) + 1
+
         new Decoder[T] {
           @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
           override def withHeaders(fields: IndexedSeq[String]) = {
@@ -130,11 +133,32 @@ object CsvHeader {
             orderingIndices.foreach { case (index, fieldIndex) =>
               val value =
                 if (fieldIndex < fieldsLength) fields(fieldIndex)
-                else "" // if the row is too short just use an empty string
+                else "" // fill so the record decoder can run, replaced with Missing below
               reordered.update(index, value)
             }
-            D.decode(ArraySeq.unsafeWrapArray(reordered))
-              .left.map(convertError(_, withHeaders(fields)))
+
+            // expected indexes whose column is not present in a row that is too short
+            val missing =
+              if (fieldsLength >= requiredFieldsCount) {
+                SortedMap.empty[Int, CsvRecordDecoder.Errors.Error]
+              } else {
+                SortedMap.from[Int, CsvRecordDecoder.Errors.Error](orderingIndices.collect {
+                  case (index, fieldIndex) if fieldIndex >= fieldsLength =>
+                    index -> CsvRecordDecoder.Errors.Field.Missing
+                })
+              }
+
+            D.decode(ArraySeq.unsafeWrapArray(reordered)) match {
+              case Right(value) =>
+                if (missing.isEmpty) {
+                  Right(value)
+                } else {
+                  Left(convertError(CsvRecordDecoder.Errors(fields, missing), withHeaders(fields)))
+                }
+              case Left(error) =>
+                val errors = SortedMap.from(error.errors ++ missing)
+                Left(convertError(error.copy(errors = errors), withHeaders(fields)))
+            }
           }
         }
       }
