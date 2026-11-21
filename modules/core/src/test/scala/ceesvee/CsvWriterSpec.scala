@@ -21,6 +21,14 @@ object CsvWriterSpec extends ZIOSpecDefault {
           assertTrue(quoteField("field ") == "\"field \"") &&
           assertTrue(quoteField("field\t") == "\"field\t\"")
         },
+        test("unicode whitespace") {
+          val whitespace = List('\u000B', '\u000C', '\u001C', '\u2003', '\u3000')
+
+          assertTrue(whitespace.forall { c =>
+            quoteField(s"${c}field") == s"\"${c}field\"" &&
+            quoteField(s"field${c}") == s"\"field${c}\""
+          })
+        },
         test("line endings") {
           assertTrue(quoteField("one\ntwo") == "\"one\ntwo\"") &&
           assertTrue(quoteField("one\rtwo") == "\"one\rtwo\"") &&

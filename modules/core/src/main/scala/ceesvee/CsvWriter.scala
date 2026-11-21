@@ -33,13 +33,9 @@ object CsvWriter {
   }
 
   def needsQuoting(s: String): Boolean = {
-    s.headOption.exists(isWhitespace(_)) ||
-    s.lastOption.exists(isWhitespace(_)) ||
+    s.headOption.exists(Character.isWhitespace(_)) ||
+    s.lastOption.exists(Character.isWhitespace(_)) ||
     containsSpecialCharacter(s)
-  }
-
-  def isWhitespace(c: Char): Boolean = {
-    c == ' ' || c == '\t'
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.While"))
