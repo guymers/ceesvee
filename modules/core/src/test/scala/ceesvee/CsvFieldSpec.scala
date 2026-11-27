@@ -25,6 +25,17 @@ object CsvFieldSpec extends ZIOSpecDefault {
         assertGolden(s)
       }
     },
+    suite("char")(
+      test("valid") {
+        check(Gen.asciiChar) { c =>
+          assertGolden(c)
+        }
+      },
+      test("invalid") {
+        val result = CsvFieldDecoder[Char].decode("ab")
+        assertTrue(result == Left(Error("ab", "invalid character value, expected a single character")))
+      },
+    ),
     suite("boolean")({
       val valid = Map(
         // true
@@ -68,6 +79,17 @@ object CsvFieldSpec extends ZIOSpecDefault {
       )
     }*),
     suite("numbers")(
+      suite("short")(
+        test("valid") {
+          check(Gen.short) { s =>
+            assertGolden(s)
+          }
+        },
+        test("invalid") {
+          val result = CsvFieldDecoder[Short].decode("32768")
+          assertTrue(result == Left(Error("32768", "invalid numeric value, required short")))
+        },
+      ),
       suite("int")(
         test("valid") {
           check(Gen.int) { i =>
@@ -112,6 +134,17 @@ object CsvFieldSpec extends ZIOSpecDefault {
           assertTrue(result == Left(Error("_123.45", "invalid numeric value, required double")))
         },
       ),
+      suite("big int")(
+        test("valid") {
+          check(Gen.long.map(BigInt(_))) { i =>
+            assertGolden(i)
+          }
+        },
+        test("invalid") {
+          val result = CsvFieldDecoder[BigInt].decode("_123")
+          assertTrue(result == Left(Error("_123", "invalid numeric value, required big int")))
+        },
+      ),
       suite("big decimal")(
         test("valid") {
           check(Gen.bigDecimal(Double.MinValue, Double.MaxValue)) { d =>
@@ -119,8 +152,8 @@ object CsvFieldSpec extends ZIOSpecDefault {
           }
         },
         test("invalid") {
-          val result = CsvFieldDecoder[Double].decode("_123.45")
-          assertTrue(result == Left(Error("_123.45", "invalid numeric value, required double")))
+          val result = CsvFieldDecoder[BigDecimal].decode("_123.45")
+          assertTrue(result == Left(Error("_123.45", "invalid numeric value, required big decimal")))
         },
       ),
     ),
