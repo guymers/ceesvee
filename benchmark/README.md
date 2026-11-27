@@ -13,12 +13,12 @@ ParserBenchmark.univocity      avgt   10  200.769 ±  0.288  us/op
 
 ```
 # JMH version: 1.37
-# VM version: JDK 25.0.4.1.1, OpenJDK 64-Bit Server VM, 25.0.4.1.1+1-jvmci-25.4-b23
+# VM version: JDK 25.0.5.1, OpenJDK 64-Bit Server VM, 25.0.5.1+2-jvmci-25.6-b29
 Benchmark                      Mode  Cnt    Score    Error  Units
-ParserBenchmark.ceesvee        avgt   10  120.293 ±  0.470  us/op
-ParserBenchmark.ceesveeVector  avgt   10  548.682 ±  1.075  us/op
-ParserBenchmark.scalaCsv       avgt   10  736.035 ±  0.680  us/op
-ParserBenchmark.univocity      avgt   10  200.027 ±  0.282  us/op
+ParserBenchmark.ceesvee        avgt   10  118.374 ±  0.264  us/op
+ParserBenchmark.ceesveeVector  avgt   10  516.460 ±  3.244  us/op
+ParserBenchmark.scalaCsv       avgt   10  699.581 ±  2.217  us/op
+ParserBenchmark.univocity      avgt   10  196.931 ±  1.218  us/op
 ```
 
 `benchmark/Jmh/run -i 10 -wi 5 -f 1 -t 2 ceesvee.benchmark.DecoderBenchmark`
@@ -33,9 +33,9 @@ DecoderBenchmark.univocity  avgt   10  0.006 ±  0.001  us/op
 
 ```
 # JMH version: 1.37
-# VM version: JDK 25.0.4.1.1, OpenJDK 64-Bit Server VM, 25.0.4.1.1+1-jvmci-25.4-b23
+# VM version: JDK 25.0.5.1, OpenJDK 64-Bit Server VM, 25.0.5.1+2-jvmci-25.6-b29
 Benchmark                   Mode  Cnt  Score    Error  Units
-DecoderBenchmark.ceesvee    avgt   10  0.038 ±  0.001  us/op
+DecoderBenchmark.ceesvee    avgt   10  0.037 ±  0.001  us/op
 DecoderBenchmark.univocity  avgt   10  0.006 ±  0.001  us/op
 ```
 
@@ -52,9 +52,9 @@ WriterBenchmark.ceesveeFieldsToLineWithoutQuoting  avgt   10   45.927 ±  0.040 
 
 ```
 # JMH version: 1.37
-# VM version: JDK 25.0.4.1.1, OpenJDK 64-Bit Server VM, 25.0.4.1.1+1-jvmci-25.4-b23
+# VM version: JDK 25.0.5.1, OpenJDK 64-Bit Server VM, 25.0.5.1+2-jvmci-25.6-b29
 Benchmark                                          Mode  Cnt    Score    Error  Units
-WriterBenchmark.ceesveeEncodeWithHeader            avgt   10  195.640 ±  0.688  us/op
-WriterBenchmark.ceesveeFieldsToLine                avgt   10   77.555 ±  0.075  us/op
-WriterBenchmark.ceesveeFieldsToLineWithoutQuoting  avgt   10   56.545 ±  0.040  us/op
+WriterBenchmark.ceesveeEncodeWithHeader            avgt   10  198.075 ±  0.525  us/op
+WriterBenchmark.ceesveeFieldsToLine                avgt   10   79.403 ±  0.288  us/op
+WriterBenchmark.ceesveeFieldsToLineWithoutQuoting  avgt   10   57.673 ±  0.110  us/op
 ```
