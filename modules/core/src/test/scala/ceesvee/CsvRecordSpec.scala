@@ -38,6 +38,44 @@ object CsvRecordSpec extends ZIOSpecDefault {
       assertTrue(decodedT == Right(t)) &&
       assertTrue(decodedTCE == Right(tce))
     },
+    test("compose error indices") {
+      val fields = Vector("1", "x")
+      val decoder = (CsvRecordDecoder[Int], CsvRecordDecoder[Int]).tupled
+      assertTrue(decoder.decode(fields) == Left(CsvRecordDecoder.Errors(
+        raw = fields,
+        errors = SortedMap(
+          1 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error(
+            "x",
+            "invalid numeric value, required int",
+          )),
+        ),
+        records = Nil,
+      )))
+    },
+    test("compose ap error indices") {
+      val fields = Vector("1", "x")
+      val decoder = CsvRecordDecoder[Int].ap(CsvRecordDecoder[Int].map(i => (j: Int) => (i, j)))
+      assertTrue(decoder.decode(fields) == Left(CsvRecordDecoder.Errors(
+        raw = fields,
+        errors = SortedMap(
+          1 -> CsvRecordDecoder.Errors.Field.Invalid(CsvFieldDecoder.Error(
+            "x",
+            "invalid numeric value, required int",
+          )),
+        ),
+        records = Nil,
+      )))
+    },
+    test("compose record errors") {
+      val fields = Vector("1", "2")
+      val failing = CsvRecordDecoder[Int].emap[Int](_ => Left("always fails"))
+      val decoder = (CsvRecordDecoder[Int], failing).tupled
+      assertTrue(decoder.decode(fields) == Left(CsvRecordDecoder.Errors(
+        raw = fields,
+        errors = SortedMap.empty,
+        records = List(CsvRecordDecoder.Errors.Record("always fails")),
+      )))
+    },
     test("not enough fields") {
       val fields = Vector("a str", "", "123", "123.45", "true")
       val result = CsvRecordDecoder[Test].decode(fields)
@@ -46,6 +84,7 @@ object CsvRecordSpec extends ZIOSpecDefault {
         errors = SortedMap(
           5 -> CsvRecordDecoder.Errors.Field.Missing,
         ),
+        records = Nil,
       )))
     },
     test("invalid fields") {
@@ -63,6 +102,7 @@ object CsvRecordSpec extends ZIOSpecDefault {
             "invalid boolean value valid values are 't','true','y','yes' and 'f','false','n','no'",
           )),
         ),
+        records = Nil,
       )))
     },
     test("error message truncates the raw row") {
@@ -77,9 +117,8 @@ object CsvRecordSpec extends ZIOSpecDefault {
         val result = CsvRecordDecoder[TestCustomError].decode(fields)
         assertTrue(result == Left(CsvRecordDecoder.Errors(
           raw = fields,
-          errors = SortedMap(
-            0 -> CsvRecordDecoder.Errors.Record("int cannot be 0"),
-          ),
+          errors = SortedMap.empty,
+          records = List(CsvRecordDecoder.Errors.Record("int cannot be 0")),
         )))
       },
       test("nested") {
@@ -87,8 +126,19 @@ object CsvRecordSpec extends ZIOSpecDefault {
         val result = CsvRecordDecoder[TestCustomErrorNested].decode(fields)
         assertTrue(result == Left(CsvRecordDecoder.Errors(
           raw = fields,
-          errors = SortedMap(
-            1 -> CsvRecordDecoder.Errors.Record("int cannot be 0"),
+          errors = SortedMap.empty,
+          records = List(CsvRecordDecoder.Errors.Record("int cannot be 0")),
+        )))
+      },
+      test("multiple") {
+        val fields = Vector("a str", "0", "b str", "0")
+        val result = CsvRecordDecoder[TestCustomErrorPair].decode(fields)
+        assertTrue(result == Left(CsvRecordDecoder.Errors(
+          raw = fields,
+          errors = SortedMap.empty,
+          records = List(
+            CsvRecordDecoder.Errors.Record("int cannot be 0"),
+            CsvRecordDecoder.Errors.Record("int cannot be 0"),
           ),
         )))
       },
@@ -114,6 +164,7 @@ object CsvRecordSpec extends ZIOSpecDefault {
               "invalid boolean value valid values are 't','true','y','yes' and 'f','false','n','no'",
             )),
           ),
+          records = Nil,
         )))
       },
       test("present") {
@@ -160,6 +211,11 @@ case class TestCustomErrorNested(
   str: String,
   inner: TestCustomError,
   int: Int,
+) derives CsvRecordDecoder
+
+case class TestCustomErrorPair(
+  first: TestCustomError,
+  second: TestCustomError,
 ) derives CsvRecordDecoder
 
 case class TestOptionalNestedObject(

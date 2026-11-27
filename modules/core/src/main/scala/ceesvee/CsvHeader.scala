@@ -9,8 +9,14 @@ final class CsvHeader[T] private (
   private[ceesvee] val D: CsvRecordDecoder[T],
 ) {
 
+  /**
+   * Create a decoder that maps the given header columns to the expected
+   * headers.
+   *
+   * If a column name occurs more than once the first occurrence is used.
+   */
   def create(headerFields: Iterable[String]): Either[CsvHeader.MissingHeaders, CsvHeader.Decoder[T]] = {
-    val headerFieldsWithIndex = headerFields.zipWithIndex.toMap
+    val headerFieldsWithIndex = headerFields.iterator.zipWithIndex.distinctBy(_._1).toMap
     val (missing, ordering) = headers.partitionMap { header =>
       headerFieldsWithIndex.get(header).toRight(header)
     }
@@ -27,13 +33,23 @@ object CsvHeader {
     extends RuntimeException(s"Missing headers: ${missing.mkString(", ")}")
     with NoStackTrace
 
+  /**
+   * @param raw
+   *   the raw record, keyed by header
+   * @param errors
+   *   errors against individual columns, keyed by header
+   * @param records
+   *   errors against the whole record
+   */
   final case class Errors(
     raw: Map[String, String],
-    errors: SortedMap[String, CsvRecordDecoder.Errors.Error],
+    errors: SortedMap[String, CsvRecordDecoder.Errors.Field],
+    records: List[CsvRecordDecoder.Errors.Record],
   ) extends RuntimeException with NoStackTrace {
     private lazy val message = {
-      val reasons = errors.toList.map({ case (h, e) => s"column $h ${e.toString}" })
-      s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.mkString(";")}"
+      val recordReasons = records.map(e => s"record ${e.toString}")
+      val columnReasons = errors.toList.map({ case (h, e) => s"column $h ${e.toString}" })
+      s"Failed to decode ${raw.mkString(",").take(64)} because: ${(recordReasons ++ columnReasons).mkString(";")}"
     }
 
     override def getMessage = message
@@ -44,7 +60,8 @@ object CsvHeader {
    * provided.
    *
    * The number of headers must equal the number of fields `D` decodes, which is
-   * checked at runtime.
+   * checked at runtime. Header names must be unique, which is also checked at
+   * runtime.
    */
   def create[T](headers: ::[String])(using D: CsvRecordDecoder[T]): CsvHeader[T] = {
     createUnsafe(headers, D)
@@ -55,7 +72,8 @@ object CsvHeader {
    * provided.
    *
    * The number of headers must equal the number of fields `D` decodes, which is
-   * checked at runtime.
+   * checked at runtime. Header names must be unique, which is also checked at
+   * runtime.
    */
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
   def createFromTuple[T, H <: Tuple](headers: H)(using
@@ -71,6 +89,10 @@ object CsvHeader {
 
   private[ceesvee] def createUnsafe[T](headers: ::[String], D: CsvRecordDecoder[T]): CsvHeader[T] = {
     require(headers.sizeIs == D.numFields)
+
+    val duplicates = headers.diff(headers.distinct).distinct
+    require(duplicates.isEmpty, s"Duplicate headers: ${duplicates.mkString(", ")}")
+
     new CsvHeader[T](headers, D)
   }
 
@@ -104,10 +126,10 @@ object CsvHeader {
       }
 
       def convertError(error: CsvRecordDecoder.Errors, fields: Map[String, String]) = {
-        val errors = error.errors.map { case (i, error) =>
+        val fieldErrors = error.errors.map { case (i, error) =>
           orderingToHeader.getOrElse(i, s"<${i.toString}>") -> error
         }
-        Errors(fields, errors)
+        Errors(fields, fieldErrors, error.records)
       }
 
       if (ordering.zipWithIndex.forall({ case (a, b) => a == b })) {
@@ -144,9 +166,9 @@ object CsvHeader {
             // expected indexes whose column is not present in a row that is too short
             val missing =
               if (fieldsLength >= requiredFieldsCount) {
-                SortedMap.empty[Int, CsvRecordDecoder.Errors.Error]
+                SortedMap.empty[Int, CsvRecordDecoder.Errors.Field]
               } else {
-                SortedMap.from[Int, CsvRecordDecoder.Errors.Error](orderingIndices.collect {
+                SortedMap.from[Int, CsvRecordDecoder.Errors.Field](orderingIndices.collect {
                   case (index, fieldIndex) if fieldIndex >= fieldsLength =>
                     index -> CsvRecordDecoder.Errors.Field.Missing
                 })
@@ -157,7 +179,7 @@ object CsvHeader {
                 if (missing.isEmpty) {
                   Right(value)
                 } else {
-                  Left(convertError(CsvRecordDecoder.Errors(fields, missing), withHeaders(fields)))
+                  Left(convertError(CsvRecordDecoder.Errors(fields, missing, Nil), withHeaders(fields)))
                 }
               case Left(error) =>
                 val errors = SortedMap.from(error.errors ++ missing)
