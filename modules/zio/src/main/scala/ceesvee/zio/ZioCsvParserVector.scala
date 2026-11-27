@@ -17,7 +17,13 @@ object ZioCsvParserVector {
   import CsvParserVector.splitBytes
 
   /**
-   * Turns a stream of strings into a stream of CSV records.
+   * Turns a stream of bytes into a stream of CSV records.
+   *
+   * The bytes are interpreted as UTF-8 and may be split across chunks at any
+   * point.
+   *
+   * Requires the Java vector API to be available at runtime:
+   * `--add-modules=jdk.incubator.vector`.
    */
   def parse(
     options: CsvParser.Options,
@@ -37,6 +43,9 @@ object ZioCsvParserVector {
    * Split strings into CSV lines using both '\n' and '\r\n' as delimiters.
    *
    * Delimiters within double-quotes are ignored.
+   *
+   * Requires the Java vector API to be available at runtime:
+   * `--add-modules=jdk.incubator.vector`.
    */
   def splitLines(
     options: CsvParser.Options,
