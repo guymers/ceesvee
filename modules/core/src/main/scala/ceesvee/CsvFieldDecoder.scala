@@ -3,7 +3,6 @@ package ceesvee
 import java.net.URI
 import java.time.*
 import java.time.format.DateTimeParseException
-import java.time.zone.ZoneRulesException
 import java.util.UUID
 import scala.util.control.NoStackTrace
 
@@ -35,6 +34,11 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
 
   given string: CsvFieldDecoder[String] = instance(Right(_))
 
+  given char: CsvFieldDecoder[Char] = instance { str =>
+    if (str.length == 1) Right(str.charAt(0))
+    else Left(Error(str, "invalid character value, expected a single character"))
+  }
+
   // "true", "t", "yes", "y" are true
   // "false", "f", "no", "n" are false
   // anything else is an error
@@ -61,10 +65,13 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
     }
   }
 
+  given short: CsvFieldDecoder[Short] = instanceNumberFormat("short")(_.toShort)
   given int: CsvFieldDecoder[Int] = instanceNumberFormat("int")(_.toInt)
   given long: CsvFieldDecoder[Long] = instanceNumberFormat("long")(_.toLong)
   given float: CsvFieldDecoder[Float] = instanceNumberFormat("float")(_.toFloat)
   given double: CsvFieldDecoder[Double] = instanceNumberFormat("double")(_.toDouble)
+  given bigInt: CsvFieldDecoder[BigInt] = instanceNumberFormat("big int")(BigInt(_))
+  given bigDecimal: CsvFieldDecoder[BigDecimal] = instanceNumberFormat("big decimal")(BigDecimal(_))
   private def instanceNumberFormat[T](typeName: String)(to: String => T): CsvFieldDecoder[T] = instance { str =>
     try {
       Right(to(str))
@@ -109,7 +116,6 @@ object CsvFieldDecoder extends CsvFieldDecoder1 {
     try {
       Right(ZoneId.of(str))
     } catch {
-      case e: ZoneRulesException => Left(Error(str, e.getMessage))
       case e: DateTimeException => Left(Error(str, e.getMessage))
     }
   }

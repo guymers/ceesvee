@@ -28,16 +28,19 @@ object CsvFieldEncoder {
   def fromToString[A]: CsvFieldEncoder[A] = instance(_.toString)
 
   given string: CsvFieldEncoder[String] = instance(identity(_))
+  given char: CsvFieldEncoder[Char] = fromToString
 
   given boolean: CsvFieldEncoder[Boolean] = instance {
     case true => "true"
     case false => "false"
   }
 
+  given short: CsvFieldEncoder[Short] = fromToString
   given int: CsvFieldEncoder[Int] = fromToString
   given long: CsvFieldEncoder[Long] = fromToString
   given float: CsvFieldEncoder[Float] = fromToString
   given double: CsvFieldEncoder[Double] = fromToString
+  given bigInt: CsvFieldEncoder[BigInt] = fromToString
   given bigDecimal: CsvFieldEncoder[BigDecimal] = fromToString
 
   given localDate: CsvFieldEncoder[LocalDate] = fromToString
