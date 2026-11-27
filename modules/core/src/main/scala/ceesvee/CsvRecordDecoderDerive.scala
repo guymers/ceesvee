@@ -35,7 +35,8 @@ class CsvRecordDecoderInstance[A](
     "org.wartremover.warts.Var",
   ))
   override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
-    val errs = SortedMap.newBuilder[Int, CsvRecordDecoder.Errors.Error]
+    val errs = SortedMap.newBuilder[Int, CsvRecordDecoder.Errors.Field]
+    val records = List.newBuilder[CsvRecordDecoder.Errors.Record]
     val values = Array.ofDim[Any](instancesLength)
 
     var index = 0
@@ -45,7 +46,10 @@ class CsvRecordDecoderInstance[A](
     instances.foreach { decoder =>
       val num = decoder.numFields
       decoder.decodeAt(fields, absoluteOffset, num) match {
-        case Left(error) => error.errors.foreachEntry { case (k, v) => errs.addOne((k + localOffset, v)) }
+        case Left(error) =>
+          // Field indices are relative to the nested decoder, so shift them by this field's offset.
+          error.errors.foreachEntry { case (k, v) => errs.addOne((k + localOffset, v)) }
+          records.addAll(error.records)
         case Right(v) => values.update(index, v)
       }
       index = index + 1
@@ -54,7 +58,11 @@ class CsvRecordDecoderInstance[A](
     }
 
     val errs_ = errs.result()
-    if (errs_.nonEmpty) Left(CsvRecordDecoder.Errors(fields, errs_))
-    else Right(m.fromProduct(Tuple.fromArray(values)))
+    val records_ = records.result()
+    if (errs_.nonEmpty || records_.nonEmpty) {
+      Left(CsvRecordDecoder.Errors(fields, errs_, records_))
+    } else {
+      Right(m.fromProduct(Tuple.fromArray(values)))
+    }
   }
 }

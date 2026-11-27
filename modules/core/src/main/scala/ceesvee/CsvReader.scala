@@ -44,6 +44,13 @@ object CsvReader {
    *
    * The first record is consumed as the header, so it is read when this method
    * is called.
+   *
+   * The input strings must contain new lines as they are split on them. Line
+   * oriented streams such as `Files.lines` or `Source.getLines` must not be
+   * used directly: their chunks do not contain a new line and every line is
+   * joined into a single record.
+   *
+   * A UTF-8 BOM is not stripped: remove it before calling this method.
    */
   @throws[CsvParser.Error.LineTooLong]("if a line is longer than `maximumLineLength`")
   def decodeWithHeader[T](
@@ -66,6 +73,8 @@ object CsvReader {
    * The given strings must contain new lines as this method splits on them.
    *
    * Blank lines and lines starting with '#' are ignored.
+   *
+   * A UTF-8 BOM is not stripped: remove it before calling this method.
    */
   @throws[CsvParser.Error.LineTooLong]("if a line is longer than `maximumLineLength`")
   def decode[T](

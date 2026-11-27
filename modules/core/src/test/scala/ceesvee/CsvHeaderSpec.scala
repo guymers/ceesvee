@@ -17,6 +17,30 @@ object CsvHeaderSpec extends ZIOSpecDefault {
       val result = header.create(List("b"))
       assertTrue(result == Left(CsvHeader.MissingHeaders(::("a", List("c")))))
     },
+    suite("duplicate columns")(
+      test("the first column wins") {
+        val decoder = header.create(List("a", "a", "b", "c")).toOption.get
+        val row = Vector("first", "second", "1", "true")
+
+        assertTrue(decoder.withHeaders(row) == Map("a" -> "first", "b" -> "1", "c" -> "true")) &&
+        assertTrue(decoder.decode(row) == Right(Test("first", 1, c = true)))
+      },
+      test("the first column wins when reordered") {
+        val decoder = header.create(List("b", "a", "a", "c")).toOption.get
+        val row = Vector("1", "first", "second", "true")
+
+        assertTrue(decoder.withHeaders(row) == Map("a" -> "first", "b" -> "1", "c" -> "true")) &&
+        assertTrue(decoder.decode(row) == Right(Test("first", 1, c = true)))
+      },
+      test("duplicate expected headers are rejected") {
+        val result = Try(CsvHeader.create(::("a", List("a", "c")))(using Test.decoder))
+
+        assertTrue(result.failed.toOption.exists {
+          case e: IllegalArgumentException => e.getMessage.contains("Duplicate headers: a")
+          case _ => false
+        })
+      },
+    ),
     suite("decodes")({
       val headers = List("_a", "a", "_b", "b", "_c", "c", "_d")
       val decoder = header.create(headers).toOption.get
@@ -41,9 +65,24 @@ object CsvHeaderSpec extends ZIOSpecDefault {
               "invalid numeric value, required int",
             )),
           ),
+          Nil,
         )))
       } :: Nil
     }*),
+    suite("record errors")(
+      test("are reported against the record not the first column") {
+        val recordDecoder = CsvRecordDecoder[Int].emap(i => if (i > 0) Right(i) else Left("must be positive"))
+        val decoder = CsvHeader.create(::("a", Nil))(using recordDecoder).create(List("a")).toOption.get
+
+        val result = decoder.decode(Vector("-1"))
+        assertTrue(result == Left(CsvHeader.Errors(
+          Map("a" -> "-1"),
+          SortedMap.empty,
+          List(CsvRecordDecoder.Errors.Record("must be positive")),
+        ))) &&
+        assertTrue(result.swap.toOption.exists(_.getMessage.endsWith("because: record must be positive")))
+      },
+    ),
     suite("short rows")({
       val inOrder = header.create(List("a", "b", "c")).toOption.get
       val reordered = header.create(List("b", "a", "c")).toOption.get
@@ -53,6 +92,7 @@ object CsvHeaderSpec extends ZIOSpecDefault {
         assertTrue(inOrder.decode(row) == Left(CsvHeader.Errors(
           Map("a" -> "str", "b" -> "1"),
           SortedMap("c" -> CsvRecordDecoder.Errors.Field.Missing),
+          Nil,
         )))
       } ::
       test("in a reordered header") {
@@ -60,6 +100,7 @@ object CsvHeaderSpec extends ZIOSpecDefault {
         assertTrue(reordered.decode(row) == Left(CsvHeader.Errors(
           Map("a" -> "str", "b" -> "1"),
           SortedMap("c" -> CsvRecordDecoder.Errors.Field.Missing),
+          Nil,
         )))
       } ::
       test("when the missing field is not last in the header order") {
@@ -68,6 +109,7 @@ object CsvHeaderSpec extends ZIOSpecDefault {
         assertTrue(decoder.decode(row) == Left(CsvHeader.Errors(
           Map("b" -> "1", "c" -> "true"),
           SortedMap("a" -> CsvRecordDecoder.Errors.Field.Missing),
+          Nil,
         )))
       } ::
       test("reports missing and invalid fields together") {
@@ -81,6 +123,7 @@ object CsvHeaderSpec extends ZIOSpecDefault {
             )),
             "c" -> CsvRecordDecoder.Errors.Field.Missing,
           ),
+          Nil,
         )))
       } :: Nil
     }*),

@@ -23,57 +23,102 @@ trait CsvRecordDecoder[A] { self =>
 
   final def map[B](f: A => B): CsvRecordDecoder[B] = emap(a => Right(f(a)))
 
-  final def emap[B](f: A => Either[String, B]): CsvRecordDecoder[B] = emapAtIndex(a => f(a).left.map((0, _)))
+  /**
+   * Map the decoded value, reporting a failure against the whole record rather
+   * than against a single field.
+   */
+  final def emap[B](f: A => Either[String, B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
+    override val numFields = self.numFields
+    override def decode(fields: IndexedSeq[String]) = {
+      self.decode(fields).flatMap(a => f(a).left.map(recordError(_, fields)))
+    }
+    override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
+      self.decodeAt(fields, offset, length).flatMap(a => f(a).left.map(recordError(_, fields)))
+    }
 
+    private def recordError(reason: String, fields: IndexedSeq[String]) =
+      CsvRecordDecoder.Errors(
+        fields,
+        SortedMap.empty[Int, CsvRecordDecoder.Errors.Field],
+        List(CsvRecordDecoder.Errors.Record(reason)),
+      )
+  }
+
+  /**
+   * Map the decoded value, reporting a failure against the given field index.
+   *
+   * Use [[emap]] to report a failure against the whole record.
+   */
   final def emapAtIndex[B](f: A => Either[(Int, String), B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
     override val numFields = self.numFields
-
     override def decode(fields: IndexedSeq[String]) = {
-      self.decode(fields).flatMap(mapDecoded(_, fields))
+      self.decode(fields).flatMap(a => f(a).left.map(fieldError(_, fields)))
+    }
+    override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
+      self.decodeAt(fields, offset, length).flatMap(a => f(a).left.map(fieldError(_, fields)))
     }
 
-    override def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
-      self.decodeAt(fields, offset, length).flatMap(mapDecoded(_, fields))
-    }
-
-    private def mapDecoded(a: A, fields: IndexedSeq[String]) = f(a).left.map { case (i, msg) =>
-      val errors = SortedMap(i -> CsvRecordDecoder.Errors.Record(msg))
-      CsvRecordDecoder.Errors(fields, errors)
+    private def fieldError(error: (Int, String), fields: IndexedSeq[String]) = {
+      val (index, reason) = error
+      val fieldError = CsvRecordDecoder.Errors.Field.Custom(reason)
+      CsvRecordDecoder.Errors(fields, SortedMap(index -> fieldError), Nil)
     }
   }
 
   final def ap[B](ff: CsvRecordDecoder[A => B]): CsvRecordDecoder[B] = new CsvRecordDecoder[B] {
     override val numFields = ff.numFields + self.numFields
     override def decode(fields: IndexedSeq[String]) = decodeAt(fields, 0, fields.length)
-    override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = for {
-      aToB <- ff.decodeAt(fields, offset, ff.numFields)
-      a <- self.decodeAt(fields, offset + ff.numFields, self.numFields)
-    } yield aToB(a)
+    override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
+      ff.decodeAt(fields, offset, ff.numFields).flatMap { aToB =>
+        self.decodeAt(fields, offset + ff.numFields, self.numFields) match {
+          case Left(error) => Left(error.shiftFieldIndices(ff.numFields))
+          case Right(a) => Right(aToB(a))
+        }
+      }
+    }
   }
 
   final def map2[B, Z](fb: CsvRecordDecoder[B])(f: (A, B) => Z): CsvRecordDecoder[Z] = new CsvRecordDecoder[Z] {
     override val numFields = self.numFields + fb.numFields
     override def decode(fields: IndexedSeq[String]) = decodeAt(fields, 0, fields.length)
-    override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = for {
-      a <- self.decodeAt(fields, offset, self.numFields)
-      b <- fb.decodeAt(fields, offset + self.numFields, fb.numFields)
-    } yield f(a, b)
+    override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
+      self.decodeAt(fields, offset, self.numFields).flatMap { a =>
+        fb.decodeAt(fields, offset + self.numFields, fb.numFields) match {
+          case Left(error) => Left(error.shiftFieldIndices(self.numFields))
+          case Right(b) => Right(f(a, b))
+        }
+      }
+    }
   }
 
   final def product[B](fb: CsvRecordDecoder[B]): CsvRecordDecoder[(A, B)] = map2(fb)({ case t @ (_, _) => t })
 }
 object CsvRecordDecoder extends CsvRecordDecoder1 {
 
+  /**
+   * @param raw
+   *   the raw record
+   * @param errors
+   *   errors against individual fields, keyed by the field index
+   * @param records
+   *   errors against the whole record
+   */
   final case class Errors(
     raw: Iterable[String],
-    errors: SortedMap[Int, Errors.Error],
+    errors: SortedMap[Int, Errors.Field],
+    records: List[Errors.Record],
   ) extends RuntimeException with NoStackTrace {
     private lazy val message = {
-      val reasons = errors.toList.map({ case (i, e) => s"index ${i.toString} ${e.toString}" })
-      s"Failed to decode ${raw.mkString(",").take(64)} because: ${reasons.mkString(";")}"
+      val recordReasons = records.map(e => s"record ${e.toString}")
+      val fieldReasons = errors.toList.map({ case (i, e) => s"index ${i.toString} ${e.toString}" })
+      s"Failed to decode ${raw.mkString(",").take(64)} because: ${(recordReasons ++ fieldReasons).mkString(";")}"
     }
 
     override def getMessage = message
+
+    private[ceesvee] def shiftFieldIndices(offset: Int) = copy(
+      errors = errors.map { case (i, error) => (i + offset, error) },
+    )
   }
   object Errors {
 
@@ -91,11 +136,13 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
     sealed trait Field extends Error {
       override val toString: String = this match {
         case Field.Invalid(error) => error.getMessage
+        case Field.Custom(error) => error
         case Field.Missing => "Missing field"
       }
     }
     object Field {
       final case class Invalid(error: CsvFieldDecoder.Error) extends Field
+      final case class Custom(error: String) extends Field
       case object Missing extends Field
     }
   }
@@ -110,10 +157,10 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
 
       @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
       override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
-        if (offset >= fields.length) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing)))
+        if (offset >= fields.length) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing), Nil))
         else {
           D.decode(fields(offset)).left.map { err =>
-            Errors(fields, SortedMap(0 -> Errors.Field.Invalid(err)))
+            Errors(fields, SortedMap(0 -> Errors.Field.Invalid(err)), Nil)
           }
         }
       }
@@ -128,11 +175,11 @@ object CsvRecordDecoder extends CsvRecordDecoder1 {
 
       @SuppressWarnings(Array("org.wartremover.warts.SeqApply"))
       override private[ceesvee] def decodeAt(fields: IndexedSeq[String], offset: Int, length: Int) = {
-        if (offset >= fields.length) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing)))
+        if (offset >= fields.length) Left(Errors(fields, SortedMap(0 -> Errors.Field.Missing), Nil))
         else if (isNone(fields(offset))) Right(None)
         else {
           D.decode(fields(offset)).map(Some(_)).left.map { err =>
-            Errors(fields, SortedMap(0 -> Errors.Field.Invalid(err)))
+            Errors(fields, SortedMap(0 -> Errors.Field.Invalid(err)), Nil)
           }
         }
       }
