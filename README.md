@@ -1,5 +1,7 @@
 ### ceeSvee
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.guymers/ceesvee-core_3)](https://central.sonatype.com/namespace/io.github.guymers)
+
 A Scala 3 CSV library designed for use with streams. Can be used with `Iterator`, `fs2.Stream` and `zio.stream.ZStream`.
 
 Supports the CSV format described by [Model for Tabular Data and Metadata on the Web](https://www.w3.org/TR/2015/REC-tabular-data-model-20151217/#ebnf):
