@@ -26,7 +26,7 @@ object CsvTestHelper {
     )
 
     def injectInMiddle[R](str: String)(gen: Gen[R, Char]) = {
-      val (a, z) = str.splitAt(str.length)
+      val (a, z) = str.splitAt(str.length / 2)
 
       gen.map(c => s"$a$c$z")
     }

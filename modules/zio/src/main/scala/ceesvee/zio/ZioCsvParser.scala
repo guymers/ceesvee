@@ -17,6 +17,10 @@ object ZioCsvParser {
 
   /**
    * Turns a stream of strings into a stream of CSV records.
+   *
+   * The input strings must contain new lines as they are split on them. Use a
+   * stream that preserves them, for example `ZStream.fromInputStream` decoded
+   * with `ZPipeline.utfDecode`, not a line oriented stream.
    */
   def parse(
     options: CsvParser.Options,
@@ -36,6 +40,10 @@ object ZioCsvParser {
    * Split strings into CSV lines using both '\n' and '\r\n' as delimiters.
    *
    * Delimiters within double-quotes are ignored.
+   *
+   * Each input chunk is expected to contain the new lines that terminate its
+   * lines: a chunk without a new line is carried over and joined with the next
+   * one.
    */
   def splitLines(
     options: CsvParser.Options,

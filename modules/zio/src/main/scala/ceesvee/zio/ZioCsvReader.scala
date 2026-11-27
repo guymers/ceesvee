@@ -25,6 +25,12 @@ object ZioCsvReader {
    * Turns a stream of strings into a stream of decoded CSV records.
    *
    * CSV lines are reordered based on the given headers.
+   *
+   * The input strings must contain new lines as they are split on them. Do not
+   * feed line oriented streams directly.
+   *
+   * Fails with [[Error.MissingHeaders]] if the first line does not contain all
+   * the headers, including when the input is empty.
    */
   @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.TryPartial", "org.wartremover.warts.Var"))
   def decodeWithHeader[R, E, T](
@@ -63,6 +69,9 @@ object ZioCsvReader {
 
   /**
    * Turns a stream of strings into a stream of decoded CSV records.
+   *
+   * The input strings must contain new lines as they are split on them. Do not
+   * feed line oriented streams directly.
    */
   def decode[T](
     options: CsvReader.Options,
